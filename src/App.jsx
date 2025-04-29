@@ -1,7 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import { useState } from 'react';
-
 import Dashboard from './pages/Dashboard';
 import LeftPanel from './components/LeftPanel';
 import Medicines from './pages/Medicines';
@@ -16,31 +14,30 @@ import SalesReport from './pages/SalesReport';
 import PurchaseReport from './pages/PurchaseReport';
 import LoginPage from './pages/LoginPage';
 
+// Layout for all protected pages
+const Layout = ({ children }) => (
+  <div className="flex">
+    <LeftPanel />
+    <div className="ml-[20%] w-[80%] p-6">{children}</div>
+  </div>
+);
+
+// Protected route wrapper
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = !!localStorage.getItem("token");
+  return isAuthenticated ? children : <Navigate to="/" replace />;
+};
+
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // 👈 temp true for testing
-
-  // Layout with LeftPanel + page content
-  const Layout = ({ children }) => (
-    <div className="flex">
-      <LeftPanel />
-      <div className="ml-[20%] w-[80%] p-6">{children}</div>
-    </div>
-  );
-
-  // Wrapper to protect routes
-  const ProtectedRoute = ({ children }) => {
-    return isAuthenticated ? children : <Navigate to="/login" replace />;
-  };
-
   return (
     <Router>
       <Routes>
-        {/* Public Route */}
-        <Route path="/login" element={<LoginPage />} />
+        {/* Public Route: Login */}
+        <Route path="/" element={<LoginPage />} />
 
         {/* Protected Routes */}
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Layout>
@@ -150,7 +147,7 @@ function App() {
           }
         />
 
-        {/* Catch-all redirect */}
+        {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

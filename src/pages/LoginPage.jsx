@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // 👈 import navigate
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate(); // 👈 initialize navigate
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -15,13 +15,29 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulated login API call
-    console.log('Logging in with:', form);
+    try {
+      const res = await fetch("http://localhost:8000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
 
-    setTimeout(() => {
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || "Login failed");
+
+      // ✅ Store token
+      localStorage.setItem("token", data.access_token);
+
+      // ✅ Redirect to dashboard
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.message);
+    } finally {
       setLoading(false);
-      navigate('/'); // 👈 redirect to dashboard
-    }, 1000);
+    }
   };
 
   return (
@@ -60,7 +76,7 @@ const LoginPage = () => {
             type="submit"
             disabled={loading}
             className={`w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition ${
-              loading && 'opacity-50 cursor-not-allowed'
+              loading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
             {loading ? 'Logging in...' : 'Login'}
