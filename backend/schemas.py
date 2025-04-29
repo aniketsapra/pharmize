@@ -9,3 +9,9 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+    
+class SupplierCreate(BaseModel):
+    name: str
+    phone: str
+    email: str
+    address: str

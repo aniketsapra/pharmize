@@ -16,18 +16,34 @@ function SupplierCreate() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Supplier Data:', supplier);
-
-    // TODO: Send to backend via fetch/axios
-    setSupplier({
-      name: '',
-      phone: '',
-      email: '',
-      address: '',
-    });
+  
+    try {
+      const response = await fetch("http://localhost:8000/supplier/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // if JWT protected
+        },
+        body: JSON.stringify(supplier),
+      });
+  
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Something went wrong");
+      }
+  
+      const result = await response.json();
+      console.log("Supplier added:", result);
+      alert("Supplier added successfully");
+  
+      setSupplier({ name: "", phone: "", email: "", address: "" });
+    } catch (err) {
+      alert(err.message);
+    }
   };
+  
 
   return (
     <div className="p-6">

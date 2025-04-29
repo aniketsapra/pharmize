@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 
 function LeftPanel() {
   return (
-    <div className="fixed top-0 left-0 h-full w-1/5 bg-[#1e293b] text-white shadow-lg flex flex-col py-6 px-4">
+    <div className="fixed top-0 left-0 h-full w-1/5 bg-gray-950 text-white shadow-lg flex flex-col py-6 px-4">
       <h3 className="font-bold mb-6 text-left">PharmaTrack</h3>
 
       <div className="w-24 h-24 bg-white rounded-full mb-6 flex items-center justify-center self-center overflow-hidden">

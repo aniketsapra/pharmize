@@ -51,6 +51,23 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     token = create_access_token(data={"sub": db_user.email})
     return {"access_token": token, "token_type": "bearer"}
 
+@app.post("/supplier/create")
+def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    db_supplier = models.Supplier(
+        name=supplier.name,
+        phone=supplier.phone,
+        email=supplier.email,
+        address=supplier.address
+    )
+    try:
+        db.add(db_supplier)
+        db.commit()
+        db.refresh(db_supplier)
+        return {"message": "Supplier added successfully", "SUID": db_supplier.SUID}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    
 # 🔒 Dashboard - Protected
 @app.get("/dashboard")
 def get_dashboard(user: str = Depends(get_current_user)):
