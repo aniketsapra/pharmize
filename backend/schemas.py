@@ -1,4 +1,5 @@
 # schemas.py
+import email
 from pydantic import BaseModel
 
 class UserCreate(BaseModel):
@@ -11,6 +12,12 @@ class UserLogin(BaseModel):
     password: str
     
 class SupplierCreate(BaseModel):
+    name: str
+    phone: str
+    email: str
+    address: str
+    
+class CustomerCreate(BaseModel):
     name: str
     phone: str
     email: str

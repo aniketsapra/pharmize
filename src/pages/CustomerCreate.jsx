@@ -16,17 +16,32 @@ function CustomerCreate() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Customer Data:', Customer);
-
-    // TODO: Send to backend via fetch/axios
-    setCustomer({
-      name: '',
-      phone: '',
-      email: '',
-      address: '',
-    });
+  
+    try {
+      const response = await fetch("http://localhost:8000/customer/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // if JWT protected
+        },
+        body: JSON.stringify(Customer),
+      });
+  
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Something went wrong");
+      }
+  
+      const result = await response.json();
+      console.log("Customer added:", result);
+      alert("Customer added successfully");
+  
+      setCustomer({ name: "", phone: "", email: "", address: "" });
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   return (

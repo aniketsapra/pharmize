@@ -18,3 +18,12 @@ class Supplier(Base):
     phone = Column(String(20), nullable=False)
     email = Column(String(255), nullable=False)
     address = Column(String(500), nullable=False)
+    
+class Customer(Base):
+    __tablename__ = "customers"
+
+    CUID = Column(Integer, primary_key=True, index=True, autoincrement=True, unique=True)
+    name = Column(String(255), nullable=False)
+    phone = Column(String(20), nullable=False)
+    email = Column(String(255), nullable=False)
+    address = Column(String(500), nullable=False)
