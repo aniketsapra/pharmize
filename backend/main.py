@@ -7,6 +7,7 @@ from auth import hash_password, verify_password, create_access_token, get_curren
 from dotenv import load_dotenv
 import os
 
+
 load_dotenv()
 
 models.Base.metadata.create_all(bind=engine)
@@ -82,13 +83,101 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
         db.add(db_customer)
         db.commit()
         db.refresh(db_customer)
-        return {"message": "customer added successfully", "CUID": db_customer.CUID}
+        return {"message": "Customer added successfully", "CUID": db_customer.CUID}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     
-    
-# Dashboard - Protected
+
+@app.get("/suppliers")
+def get_suppliers(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    suppliers = db.query(models.Supplier).all()
+    return [{"SUID": s.SUID, "name": s.name} for s in suppliers]
+
+
+@app.get("/customers")
+def get_customers(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    customers = db.query(models.Customer).all()
+    return [{"CUID": c.CUID, "name": c.name} for c in customers]
+
+
 @app.get("/dashboard")
 def get_dashboard(user: str = Depends(get_current_user)):
     return {"message": f"Welcome, {user}!"}
+
+
+@app.post("/medicine/create")
+def create_medicines(medicines: list[schemas.MedicineCreate], db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    try:
+        for med in medicines:
+            db_medicine = models.Medicine(
+                name=med.name,
+                batch_number=med.batchNumber,
+                expiry_date=med.expiryDate,
+                quantity=med.quantity,
+                cost_price=med.costPrice,
+                description=med.description,
+                SUID=med.SUID
+            )
+            db.add(db_medicine)
+        
+        db.commit()  # Commit the transaction
+        return {"message": f"{len(medicines)} medicines added successfully."}
+    
+    except Exception as e:
+        db.rollback()  # Rollback in case of error
+        raise HTTPException(status_code=400, detail=f"Error adding medicines: {str(e)}")
+    
+
+@app.get("/medicines")
+def get_medicines(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    medicines = db.query(models.Medicine).all()
+    return [
+        {"id": m.id, "name": m.name, "cost_price": m.cost_price, "quantity": m.quantity} for m in medicines
+    ]
+
+
+
+@app.post("/invoice/create")
+def create_invoice(invoice_data: schemas.InvoiceCreate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    # Step 1: Validate customer
+    customer = db.query(models.Customer).filter(models.Customer.CUID == invoice_data.CUID).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    # Step 2: Validate medicines & stock
+    for item in invoice_data.items:
+        medicine = db.query(models.Medicine).filter(models.Medicine.id == item.medicineId).first()
+        if not medicine:
+            raise HTTPException(status_code=404, detail=f"Medicine ID {item.medicineId} not found")
+        if medicine.quantity < item.quantity:
+            raise HTTPException(status_code=400, detail=f"Insufficient stock for {medicine.name}")
+    
+    # Step 3: Create Invoice
+    invoice = models.Invoice(
+        CUID=invoice_data.CUID,
+        date=invoice_data.date,
+        discount=invoice_data.discount,
+        total_amount=invoice_data.finalTotal
+    )
+    db.add(invoice)
+    db.flush()  # Get invoice.id
+
+    # Step 4: Add Invoice Items and update stock
+    for item in invoice_data.items:
+        invoice_item = models.InvoiceItem(
+            invoice_id=invoice.id,
+            medicine_id=item.medicineId,
+            quantity=item.quantity,
+            unit_price=item.unitPrice
+        )
+        db.add(invoice_item)
+
+        # Update medicine stock
+        medicine = db.query(models.Medicine).filter(models.Medicine.id == item.medicineId).first()
+        medicine.quantity -= item.quantity  # Decrease the quantity in stock
+
+    db.commit()
+    return {"message": "Invoice created successfully", "invoice_id": invoice.id}
+
+

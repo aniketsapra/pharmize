@@ -1,57 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 
 const InvoiceCreate = () => {
   const [customers, setCustomers] = useState([]);
   const [medicines, setMedicines] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState('');
-  const [items, setItems] = useState([
-    { medicineId: '', quantity: 1, unitPrice: 0, availableStock: 0, total: 0 },
-  ]);
+  const [items, setItems] = useState([{ medicineId: '', quantity: 1, unitPrice: 0, availableStock: 0, total: 0 }]);
   const [discount, setDiscount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch customers & medicines (dummy placeholders for now)
   useEffect(() => {
-    setCustomers([
-      { _id: 'c1', name: 'John Doe' },
-      { _id: 'c2', name: 'Jane Smith' },
-    ]);
-    setMedicines([
-      { _id: 'm1', name: 'Paracetamol', stock: 50, price: 5 },
-      { _id: 'm2', name: 'Amoxicillin', stock: 30, price: 10 },
-    ]);
+    const token = localStorage.getItem("token");
+
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/customers", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError("Error fetching customers.");
+      }
+    };
+
+    const fetchMedicines = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/medicines", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        setMedicines(data);
+      } catch (error) {
+        setError("Error fetching medicines.");
+      }
+    };
+
+    Promise.all([fetchCustomers(), fetchMedicines()]).finally(() => {
+      setLoading(false);
+    });
   }, []);
 
   const handleMedicineChange = (index, medicineId) => {
-    const med = medicines.find((m) => m._id === medicineId);
+    const selectedMedicine = medicines.find(m => String(m.id) === String(medicineId));
+    if (!selectedMedicine) return;
+  
     const updatedItems = [...items];
     updatedItems[index] = {
       ...updatedItems[index],
       medicineId,
-      unitPrice: med.price,
-      availableStock: med.stock,
-      quantity: 1,
-      total: med.price * 1,
+      unitPrice: selectedMedicine.cost_price,
+      availableStock: selectedMedicine.quantity,
+      total: selectedMedicine.cost_price * updatedItems[index].quantity,
     };
+  
     setItems(updatedItems);
   };
+  
 
-  const handleQuantityChange = (index, qty) => {
+  const handleQuantityChange = (index, quantity) => {
     const updatedItems = [...items];
     const item = updatedItems[index];
-    const quantity = Math.min(qty, item.availableStock);
-    updatedItems[index].quantity = quantity;
-    updatedItems[index].total = quantity * item.unitPrice;
+    const updatedQuantity = Math.min(quantity, item.availableStock);
+    updatedItems[index].quantity = updatedQuantity;
+    updatedItems[index].total = updatedQuantity * item.unitPrice;
     setItems(updatedItems);
   };
 
   const addItem = () => {
-    setItems([
-      ...items,
-      { medicineId: '', quantity: 1, unitPrice: 0, availableStock: 0, total: 0 },
-    ]);
+    setItems([...items, { medicineId: '', quantity: 1, unitPrice: 0, availableStock: 0, total: 0 }]);
   };
 
   const removeItem = (index) => {
@@ -60,181 +80,227 @@ const InvoiceCreate = () => {
     setItems(updatedItems);
   };
 
-  const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+  const subtotal = items.reduce((acc, item) => acc + item.total, 0);
   const finalTotal = subtotal - (subtotal * discount) / 100;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log({
-      selectedCustomer,
+
+    const token = localStorage.getItem("token");
+    const invoiceData = {
+      CUID: selectedCustomer,
       date: today,
-      items,
       discount,
+      items: items.map(item => ({
+        medicineId: item.medicineId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
       finalTotal,
-    });
-    // TODO: Send data to backend
+    };
+
+    try {
+      const response = await fetch("http://localhost:8000/invoice/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(invoiceData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create invoice");
+      }
+
+      const data = await response.json();
+      alert(`Invoice created successfully: ${data.message}`);
+
+      setSelectedCustomer('');
+      setItems([{ medicineId: '', quantity: 1, unitPrice: 0, availableStock: 0, total: 0 }]);
+      setDiscount(0);
+    } catch (error) {
+      setError("Error creating invoice. Please try again.");
+    }
   };
 
   return (
     <div className="max-w-4xl mx-auto mt-10 bg-white p-6 shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-1">Create Invoice</h2>
-      <p className="text-gray-600 mb-4">Generate a new invoice for medicine sales</p>
-      <hr className="mb-6" />
+      <h2 className="text-2xl font-bold mb-2">Create Invoice</h2>
+      <p className="text-gray-600 mb-6">Generate a new invoice for your medicine orders.</p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Customer Selector */}
-        <div>
-          <label className="block mb-1 font-medium">Customer</label>
-          <select
-            value={selectedCustomer}
-            onChange={(e) => setSelectedCustomer(e.target.value)}
-            required
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">Select Customer</option>
-            {customers.map((cust) => (
-              <option key={cust._id} value={cust._id}>
-                {cust.name}
-              </option>
-            ))}
-          </select>
-          <Link
-            to="/customer/add"
-            className="ml-4 text-blue-500 hover:text-blue-700 text-sm"
-          >
-            + Add New Customer
-          </Link>
-        </div>
-
-        {/* Invoice Date */}
-        <div>
-          <label className="block mb-1 font-medium">Invoice Date</label>
-          <input
-            type="date"
-            value={today}
-            readOnly
-            className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
-          />
-        </div>
-
-        {/* Medicine Cart */}
-        <div className="space-y-4">
-          {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-6 gap-3 items-end">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium">Medicine</label>
-                <select
-                  value={item.medicineId}
-                  onChange={(e) => handleMedicineChange(index, e.target.value)}
-                  required
-                  className="w-full border rounded px-2 py-1"
-                >
-                  <option value="">Select</option>
-                  {medicines.map((med) => (
-                    <option key={med._id} value={med._id}>
-                      {med.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium">Stock</label>
-                <input
-                  type="number"
-                  value={item.availableStock}
-                  readOnly
-                  className="w-full bg-gray-100 px-2 py-1 rounded border"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium">Quantity</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={item.availableStock}
-                  value={item.quantity}
-                  onChange={(e) => handleQuantityChange(index, parseInt(e.target.value))}
-                  required
-                  className="w-full border rounded px-2 py-1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium">Unit Price</label>
-                <input
-                  type="number"
-                  value={item.unitPrice}
-                  readOnly
-                  className="w-full bg-gray-100 px-2 py-1 rounded border"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium">Total</label>
-                <input
-                  type="number"
-                  value={item.total.toFixed(2)}
-                  readOnly
-                  className="w-full bg-gray-100 px-2 py-1 rounded border"
-                />
-              </div>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={addItem}
-            className="text-blue-600 text-sm hover:underline"
-          >
-            + Add another medicine
-          </button>
-        </div>
-
-        {/* Discount & Final Total */}
-        <div className="grid grid-cols-2 gap-4">
+      {loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div className="text-red-500 mb-4">{error}</div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Customer Selection */}
           <div>
-            <label className="block text-sm font-medium">Discount (%)</label>
-            <input
-              type="number"
-              value={discount}
-              onChange={(e) => setDiscount(Number(e.target.value))}
-              className="w-full border rounded px-2 py-1"
-              placeholder="Optional"
-            />
+            <label className="block text-sm font-medium mb-2">Customer</label>
+            <select
+              value={selectedCustomer}
+              onChange={(e) => setSelectedCustomer(e.target.value)}
+              required
+              className="w-full border rounded px-3 py-2"
+            >
+              <option value="">Select a Customer</option>
+              {customers.map((customer) => (
+                <option key={customer.CUID} value={customer.CUID}>
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+            <Link
+              to="/customer/add"
+              className="text-blue-500 hover:text-blue-700 text-sm mt-2 inline-block"
+            >
+              + Add New Customer
+            </Link>
           </div>
+
+          {/* Invoice Date */}
           <div>
-            <label className="block text-sm font-medium">Final Total</label>
+            <label className="block text-sm font-medium mb-2">Invoice Date</label>
             <input
-              type="text"
+              type="date"
+              value={today}
               readOnly
-              value={`₹${finalTotal.toFixed(2)}`}
-              className="w-full bg-gray-100 px-2 py-1 rounded border"
+              className="w-full border rounded px-3 py-2 bg-gray-100"
             />
           </div>
-        </div>
 
-        {/* Submit */}
-        <div className="flex justify-end space-x-4">
-          <button
-            type="reset"
-            onClick={() => {
-              setItems([{ medicineId: '', quantity: 1, unitPrice: 0, availableStock: 0, total: 0 }]);
-              setDiscount(0);
-            }}
-            className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
-          >
-            Reset
-          </button>
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Generate Invoice
-          </button>
-        </div>
-      </form>
+          {/* Medicine List */}
+          <div>
+            {items.map((item, index) => (
+              <div key={index} className="grid grid-cols-6 gap-3 items-end mb-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">Medicine</label>
+                  <select
+                    value={item.medicineId}
+                    onChange={(e) => handleMedicineChange(index, e.target.value)}
+                    required
+                    className="w-full border rounded px-3 py-2"
+                  >
+                    <option value="">Select Medicine</option>
+                    {medicines.map((medicine) => (
+                      <option key={medicine.id} value={String(medicine.id)}>
+                        {medicine.name}
+                      </option>
+
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Stock</label>
+                  <input
+                    type="number"
+                    value={item.availableStock}
+                    readOnly
+                    className="w-full border rounded px-3 py-2 bg-gray-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={item.availableStock}
+                    value={item.quantity}
+                    onChange={(e) => handleQuantityChange(index, parseInt(e.target.value))}
+                    className="w-full border rounded px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Unit Price</label>
+                  <input
+                    type="number"
+                    value={item.unitPrice}
+                    readOnly
+                    className="w-full border rounded px-3 py-2 bg-gray-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Total</label>
+                  <input
+                    type="number"
+                    value={item.total.toFixed(2)}
+                    readOnly
+                    className="w-full border rounded px-3 py-2 bg-gray-100"
+                  />
+                </div>
+
+                <div className="col-span-6 flex justify-between mt-2">
+                  <button
+                    type="button"
+                    onClick={() => removeItem(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    Remove Item
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={addItem}
+              className="text-blue-500 hover:text-blue-700 text-sm"
+            >
+              + Add Another Item
+            </button>
+          </div>
+
+          {/* Discount */}
+          <div className="flex justify-between mt-4">
+            <div className="w-full max-w-xs">
+              <label className="block text-sm font-medium mb-1">Discount (%)</label>
+              <input
+                type="number"
+                value={discount}
+                onChange={(e) => setDiscount(parseFloat(e.target.value))}
+                className="w-full border rounded px-3 py-2"
+                placeholder="Enter Discount"
+              />
+            </div>
+
+            <div className="w-full max-w-xs">
+              <label className="block text-sm font-medium mb-1">Final Total</label>
+              <input
+                type="text"
+                value={`₹${finalTotal.toFixed(2)}`}
+                readOnly
+                className="w-full border rounded px-3 py-2 bg-gray-100"
+              />
+            </div>
+          </div>
+
+          {/* Submit */}
+          <div className="flex justify-end mt-6">
+            <button
+              type="reset"
+              onClick={() => {
+                setItems([{ medicineId: '', quantity: 1, unitPrice: 0, availableStock: 0, total: 0 }]);
+                setDiscount(0);
+                setSelectedCustomer('');
+              }}
+              className="bg-gray-300 px-4 py-2 rounded mr-4 hover:bg-gray-400"
+            >
+              Reset
+            </button>
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+            >
+              Generate Invoice
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 };

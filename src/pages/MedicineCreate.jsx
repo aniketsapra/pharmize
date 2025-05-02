@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 function MedicineCreate() {
   const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [suppliers, setSuppliers] = useState([]);
   const [medicines, setMedicines] = useState([
     {
       name: '',
@@ -15,12 +16,34 @@ function MedicineCreate() {
     },
   ]);
 
-  // Handle supplier selection change
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:8000/suppliers', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch suppliers');
+        }
+
+        const data = await response.json();
+        setSuppliers(data);
+      } catch (error) {
+        console.error('Error fetching suppliers:', error.message);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
+
   const handleSupplierChange = (e) => {
     setSelectedSupplier(e.target.value);
   };
 
-  // Handle input changes for each medicine row
   const handleChange = (index, e) => {
     const { name, value } = e.target;
     const updatedMedicines = [...medicines];
@@ -31,7 +54,6 @@ function MedicineCreate() {
     setMedicines(updatedMedicines);
   };
 
-  // Add new medicine row
   const addMedicineRow = () => {
     setMedicines([
       ...medicines,
@@ -47,38 +69,60 @@ function MedicineCreate() {
     ]);
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!selectedSupplier) {
       alert('Please select a supplier');
       return;
     }
-    
-    const medicinesData = medicines.map(medicine => ({
+
+    // Send SUID instead of supplier_id
+    const medicinesData = medicines.map((medicine) => ({
       ...medicine,
-      supplier: selectedSupplier
+      SUID: parseInt(selectedSupplier),  // Using SUID here
     }));
-    
-    console.log('Medicines Data:', medicinesData);
-    // TODO: Send data to the backend
-    
-    // Reset form
-    setSelectedSupplier('');
-    setMedicines([{
-      name: '',
-      batchNumber: '',
-      expiryDate: '',
-      quantity: '',
-      costPrice: '',
-      category: '',
-      description: '',
-    }]);
+
+    try {
+      const token = localStorage.getItem('token');
+
+      const response = await fetch('http://localhost:8000/medicine/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(medicinesData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to submit medicines');
+      }
+
+      const result = await response.json();
+      console.log('Success:', result);
+      alert('Medicines added successfully!');
+
+      setSelectedSupplier('');
+      setMedicines([
+        {
+          name: '',
+          batchNumber: '',
+          expiryDate: '',
+          quantity: '',
+          costPrice: '',
+          description: '',
+        },
+      ]);
+    } catch (error) {
+      console.error('Error submitting medicines:', error.message);
+      alert('Submission failed: ' + error.message);
+    }
   };
 
   return (
     <div className="p-6">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Add Medicines</h1>
         <p className="text-gray-600 mt-1">
@@ -87,7 +131,7 @@ function MedicineCreate() {
         <hr className="mt-4 border-gray-300" />
       </div>
 
-      {/* Supplier Selection Form */}
+      {/* Supplier Selection */}
       <div className="bg-white shadow-md rounded-lg p-6 mb-6">
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="supplier">
@@ -102,9 +146,11 @@ function MedicineCreate() {
               className="w-full md:w-1/2 border rounded px-3 py-2"
             >
               <option value="">Select Supplier</option>
-              <option value="ABC Pharma">ABC Pharma</option>
-              <option value="XYZ Distributors">XYZ Distributors</option>
-              <option value="MediCare Suppliers">MediCare Suppliers</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.SUID} value={supplier.SUID}>
+                  {supplier.name}
+                </option>
+              ))}
             </select>
             <Link
               to="/supplier/add"
@@ -116,25 +162,25 @@ function MedicineCreate() {
         </div>
       </div>
 
-      {/* Medicine Table Form */}
+      {/* Medicine Table */}
       <div className="bg-white shadow-md rounded-lg p-6">
         <form onSubmit={handleSubmit}>
           <table className="table-auto w-full border-collapse border border-gray-300">
             <thead>
               <tr>
-                <th className="border border-gray-300 px-4 py-2">Medicine Name *</th>
-                <th className="border border-gray-300 px-4 py-2">Batch Number *</th>
-                <th className="border border-gray-300 px-4 py-2">Expiry Date *</th>
-                <th className="border border-gray-300 px-4 py-2">Quantity *</th>
-                <th className="border border-gray-300 px-4 py-2">Cost Price (per unit) *</th>
-                <th className="border border-gray-300 px-4 py-2">Description</th>
-                <th className="border border-gray-300 px-4 py-2">Actions</th>
+                <th className="border px-4 py-2">Medicine Name *</th>
+                <th className="border px-4 py-2">Batch Number *</th>
+                <th className="border px-4 py-2">Expiry Date *</th>
+                <th className="border px-4 py-2">Quantity *</th>
+                <th className="border px-4 py-2">Cost Price *</th>
+                <th className="border px-4 py-2">Description</th>
+                <th className="border px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {medicines.map((medicine, index) => (
                 <tr key={index}>
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border px-4 py-2">
                     <input
                       type="text"
                       name="name"
@@ -144,8 +190,7 @@ function MedicineCreate() {
                       className="w-full border rounded px-3 py-2"
                     />
                   </td>
-
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border px-4 py-2">
                     <input
                       type="text"
                       name="batchNumber"
@@ -155,8 +200,7 @@ function MedicineCreate() {
                       className="w-full border rounded px-3 py-2"
                     />
                   </td>
-
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border px-4 py-2">
                     <input
                       type="date"
                       name="expiryDate"
@@ -166,8 +210,7 @@ function MedicineCreate() {
                       className="w-full border rounded px-3 py-2"
                     />
                   </td>
-
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border px-4 py-2">
                     <input
                       type="number"
                       name="quantity"
@@ -177,8 +220,7 @@ function MedicineCreate() {
                       className="w-full border rounded px-3 py-2"
                     />
                   </td>
-
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border px-4 py-2">
                     <input
                       type="number"
                       name="costPrice"
@@ -188,8 +230,7 @@ function MedicineCreate() {
                       className="w-full border rounded px-3 py-2"
                     />
                   </td>
-
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border px-4 py-2">
                     <textarea
                       name="description"
                       value={medicine.description}
@@ -198,12 +239,13 @@ function MedicineCreate() {
                       className="w-full border rounded px-3 py-2"
                     ></textarea>
                   </td>
-
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border px-4 py-2">
                     {medicines.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => setMedicines(medicines.filter((_, i) => i !== index))}
+                        onClick={() =>
+                          setMedicines(medicines.filter((_, i) => i !== index))
+                        }
                         className="text-red-500 hover:text-red-700"
                       >
                         Remove

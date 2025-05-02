@@ -1,24 +1,46 @@
-# schemas.py
-import email
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from datetime import date
+from typing import Optional, List
 
 class UserCreate(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     password: str
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
-    
+
 class SupplierCreate(BaseModel):
     name: str
     phone: str
-    email: str
+    email: EmailStr
     address: str
-    
+
 class CustomerCreate(BaseModel):
     name: str
     phone: str
-    email: str
+    email: EmailStr
     address: str
+
+class MedicineCreate(BaseModel):
+    name: str
+    batchNumber: str
+    expiryDate: date
+    quantity: int
+    costPrice: float
+    description: Optional[str] = None
+    SUID: int
+    
+class InvoiceItemCreate(BaseModel):
+    medicineId: int
+    quantity: int
+    unitPrice: float
+
+class InvoiceCreate(BaseModel):
+    CUID: int
+    date: date
+    discount: float
+    items: List[InvoiceItemCreate]
+    finalTotal: float
+    
