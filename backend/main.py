@@ -3,9 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models, schemas
 from database import SessionLocal, engine 
+from typing import List
+from schemas import SupplierResponse, CustomerResponse
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from dotenv import load_dotenv
 import os
+from models import Customer, Supplier
+
 
 
 load_dotenv()
@@ -88,18 +92,14 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     
-
-@app.get("/suppliers")
+@app.get("/suppliers", response_model=List[SupplierResponse])
 def get_suppliers(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
-    suppliers = db.query(models.Supplier).all()
-    return [{"SUID": s.SUID, "name": s.name} for s in suppliers]
+    return db.query(Supplier).all()
 
 
-@app.get("/customers")
+@app.get("/customers", response_model=List[CustomerResponse])
 def get_customers(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
-    customers = db.query(models.Customer).all()
-    return [{"CUID": c.CUID, "name": c.name} for c in customers]
-
+    return db.query(Customer).all()
 
 @app.get("/dashboard")
 def get_dashboard(user: str = Depends(get_current_user)):

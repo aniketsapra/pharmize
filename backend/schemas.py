@@ -17,11 +17,32 @@ class SupplierCreate(BaseModel):
     email: EmailStr
     address: str
 
+class SupplierResponse(BaseModel):
+    SUID: int
+    name: str
+    phone: str
+    email: EmailStr
+    address: str
+
+    class Config:
+        orm_mode = True
+
 class CustomerCreate(BaseModel):
     name: str
     phone: str
     email: EmailStr
     address: str
+
+
+class CustomerResponse(BaseModel):
+    CUID: int
+    name: str
+    phone: str
+    email: EmailStr
+    address: str
+
+    class Config:
+        orm_mode = True
 
 class MedicineCreate(BaseModel):
     name: str
