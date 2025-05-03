@@ -133,10 +133,19 @@ def create_medicines(medicines: list[schemas.MedicineCreate], db: Session = Depe
 def get_medicines(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     medicines = db.query(models.Medicine).all()
     return [
-        {"id": m.id, "name": m.name, "cost_price": m.cost_price, "quantity": m.quantity} for m in medicines
+        {
+            "id": m.id,
+            "name": m.name,
+            "batch_number": m.batch_number,
+            "expiry_date": m.expiry_date,
+            "quantity": m.quantity,
+            "cost_price": float(m.cost_price),
+            "description": m.description,
+            "SUID": m.SUID,
+            "supplier_name": m.supplier.name if m.supplier else None,
+        }
+        for m in medicines
     ]
-
-
 
 @app.post("/invoice/create")
 def create_invoice(invoice_data: schemas.InvoiceCreate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
