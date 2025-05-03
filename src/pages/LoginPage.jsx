@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 const LoginPage = () => {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -83,6 +88,21 @@ const LoginPage = () => {
           </button>
         </form>
       </div>
+
+      {/* HoverCard fixed at bottom right */}
+    <div className="fixed bottom-5 right-10 z-50">
+      <HoverCard openDelay={0} closeDelay={0}>
+        <HoverCardTrigger className="text-sm text-blue-700 underline cursor-pointer">
+          start-demo
+        </HoverCardTrigger>
+        <HoverCardContent className="w-64 text-sm">
+          <p className="font-semibold mb-1">To check admin demo:</p>
+          <p><span className="font-medium">Email:</span> admin@pharmize.com</p>
+          <p><span className="font-medium">Password:</span> 123456admin</p>
+        </HoverCardContent>
+      </HoverCard>
+    </div>
+
     </div>
   );
 };
