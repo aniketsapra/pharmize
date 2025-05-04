@@ -64,4 +64,25 @@ class InvoiceCreate(BaseModel):
     discount: float
     items: List[InvoiceItemCreate]
     finalTotal: float
-    
+
+class InvoiceItemResponse(BaseModel):
+    id: int
+    medicine_name: str
+    quantity: int
+    unit_price: float
+
+    class Config:
+        orm_mode = True
+
+class InvoiceResponse(BaseModel):
+    id: int
+    CUID: int
+    customer_name: str
+    date: date
+    discount: float
+    total_amount: float
+    items: List[InvoiceItemResponse]
+
+    class Config:
+        orm_mode = True
+

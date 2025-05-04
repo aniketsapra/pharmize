@@ -4,11 +4,11 @@ from sqlalchemy.orm import Session
 import models, schemas
 from database import SessionLocal, engine 
 from typing import List
-from schemas import SupplierResponse, CustomerResponse
+from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, InvoiceItemResponse
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from dotenv import load_dotenv
 import os
-from models import Customer, Supplier
+from models import Customer, Supplier, Invoice, InvoiceItem, Medicine
 
 
 
@@ -189,4 +189,34 @@ def create_invoice(invoice_data: schemas.InvoiceCreate, db: Session = Depends(ge
     db.commit()
     return {"message": "Invoice created successfully", "invoice_id": invoice.id}
 
+@app.get("/invoices", response_model=List[InvoiceResponse])
+def get_invoices(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    invoices = db.query(Invoice).all()
+    response = []
+
+    for invoice in invoices:
+        customer = db.query(Customer).filter(Customer.CUID == invoice.CUID).first()
+        items = db.query(InvoiceItem).filter(InvoiceItem.invoice_id == invoice.id).all()
+        
+        item_data = []
+        for item in items:
+            medicine = db.query(Medicine).filter(Medicine.id == item.medicine_id).first()
+            item_data.append(InvoiceItemResponse(
+                id=item.id,
+                medicine_name=medicine.name if medicine else "Unknown",
+                quantity=item.quantity,
+                unit_price=float(item.unit_price)
+            ))
+
+        response.append(InvoiceResponse(
+            id=invoice.id,
+            CUID=invoice.CUID,
+            customer_name=customer.name if customer else "Unknown",
+            date=invoice.date,
+            discount=float(invoice.discount),
+            total_amount=float(invoice.total_amount),
+            items=item_data
+        ))
+
+    return response
 
