@@ -36,6 +36,7 @@ class Medicine(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     batch_number = Column(String(100), nullable=False)
+    entry_date = Column(Date, nullable=False)
     expiry_date = Column(Date, nullable=False)
     quantity = Column(Integer, nullable=False)
     cost_price = Column(DECIMAL(10, 2), nullable=False)

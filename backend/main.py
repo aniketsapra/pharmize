@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models, schemas
@@ -9,6 +9,8 @@ from auth import hash_password, verify_password, create_access_token, get_curren
 from dotenv import load_dotenv
 import os
 from models import Customer, Supplier, Invoice, InvoiceItem, Medicine
+from sqlalchemy import func
+from datetime import datetime
 
 
 
@@ -113,6 +115,7 @@ def create_medicines(medicines: list[schemas.MedicineCreate], db: Session = Depe
             db_medicine = models.Medicine(
                 name=med.name,
                 batch_number=med.batchNumber,
+                entry_date=med.entryDate,
                 expiry_date=med.expiryDate,
                 quantity=med.quantity,
                 cost_price=med.costPrice,
@@ -137,6 +140,7 @@ def get_medicines(db: Session = Depends(get_db), user: str = Depends(get_current
             "id": m.id,
             "name": m.name,
             "batch_number": m.batch_number,
+            "entry_date": m.entry_date,
             "expiry_date": m.expiry_date,
             "quantity": m.quantity,
             "cost_price": float(m.cost_price),
@@ -220,3 +224,113 @@ def get_invoices(db: Session = Depends(get_db), user: str = Depends(get_current_
 
     return response
 
+@app.get("/purchase-report")
+def get_purchase_report(
+    start_date: str = Query(...),
+    end_date: str = Query(...),
+    suid: int = Query(None),
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user)
+):
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+
+        query = db.query(Medicine).filter(
+            Medicine.entry_date >= start_dt,
+            Medicine.entry_date <= end_dt
+        )
+
+        if suid:
+            query = query.filter(Medicine.SUID == suid)
+
+        medicines = query.all()
+
+        total_qty = sum(m.quantity for m in medicines)
+        total_amount = sum(m.quantity * m.cost_price for m in medicines)
+
+        report_data = []
+        for m in medicines:
+            report_data.append({
+                "id": m.id,
+                "medicine_name": m.name,
+                "supplier_name": m.supplier.name if m.supplier else "Unknown",
+                "quantity": m.quantity,
+                "unit_price": float(m.cost_price),
+                "total_cost": float(m.quantity * m.cost_price),
+                "entry_date": m.entry_date.strftime("%Y-%m-%d")
+            })
+
+        return {
+            "total_quantity": total_qty,
+            "total_amount": total_amount,
+            "data": report_data
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sales-report")
+def get_sales_report(
+    start_date: str = Query(...),
+    end_date: str = Query(...),
+    cuid: str = Query(None),
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user)
+):
+    try:
+        # Parse date strings into datetime objects
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+
+        # Query invoices in the specified date range
+        invoice_query = db.query(Invoice).filter(
+            Invoice.date >= start_dt,
+            Invoice.date <= end_dt
+        )
+
+        if cuid:
+            invoice_query = invoice_query.filter(Invoice.CUID == cuid)
+
+        invoices = invoice_query.all()
+        invoice_ids = [inv.id for inv in invoices]
+
+        if not invoice_ids:
+            return {
+                "total_quantity": 0,
+                "total_amount": 0,
+                "data": []
+            }
+
+        # Fetch invoice items for the filtered invoices
+        items = db.query(InvoiceItem).filter(InvoiceItem.invoice_id.in_(invoice_ids)).all()
+
+        total_quantity = sum(item.quantity for item in items)
+        total_amount = sum(item.quantity * item.unit_price for item in items)
+
+        # Prepare the sales report data
+        report_data = []
+        for item in items:
+            invoice = next((inv for inv in invoices if inv.id == item.invoice_id), None)
+            customer = invoice.customer if invoice else None
+            medicine = item.medicine
+
+            report_data.append({
+                "invoice_id": item.invoice_id,
+                "invoice_date": invoice.date.strftime("%Y-%m-%d") if invoice else "Unknown",
+                "customer_name": customer.name if customer else "Unknown",
+                "medicine_name": medicine.name if medicine else "Unknown",
+                "quantity": item.quantity,
+                "unit_price": float(item.unit_price),
+                "total_price": float(item.quantity * item.unit_price)
+            })
+
+        return {
+            "total_quantity": total_quantity,
+            "total_amount": total_amount,
+            "data": report_data
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

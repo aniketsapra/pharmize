@@ -9,6 +9,7 @@ function MedicineCreate() {
       name: '',
       batchNumber: '',
       expiryDate: '',
+      entryDate: new Date().toISOString().split('T')[0], // today's date
       quantity: '',
       costPrice: '',
       category: '',
@@ -61,6 +62,7 @@ function MedicineCreate() {
         name: '',
         batchNumber: '',
         expiryDate: '',
+        entryDate: new Date().toISOString().split('T')[0],
         quantity: '',
         costPrice: '',
         category: '',
@@ -77,10 +79,9 @@ function MedicineCreate() {
       return;
     }
 
-    // Send SUID instead of supplier_id
     const medicinesData = medicines.map((medicine) => ({
       ...medicine,
-      SUID: parseInt(selectedSupplier),  // Using SUID here
+      SUID: parseInt(selectedSupplier),
     }));
 
     try {
@@ -110,8 +111,10 @@ function MedicineCreate() {
           name: '',
           batchNumber: '',
           expiryDate: '',
+          entryDate: new Date().toISOString().split('T')[0],
           quantity: '',
           costPrice: '',
+          category: '',
           description: '',
         },
       ]);
@@ -170,6 +173,7 @@ function MedicineCreate() {
               <tr>
                 <th className="border px-4 py-2">Medicine Name *</th>
                 <th className="border px-4 py-2">Batch Number *</th>
+                <th className="border px-4 py-2">Entry Date *</th>
                 <th className="border px-4 py-2">Expiry Date *</th>
                 <th className="border px-4 py-2">Quantity *</th>
                 <th className="border px-4 py-2">Cost Price *</th>
@@ -195,6 +199,16 @@ function MedicineCreate() {
                       type="text"
                       name="batchNumber"
                       value={medicine.batchNumber}
+                      onChange={(e) => handleChange(index, e)}
+                      required
+                      className="w-full border rounded px-3 py-2"
+                    />
+                  </td>
+                  <td className="border px-4 py-2">
+                    <input
+                      type="date"
+                      name="entryDate"
+                      value={medicine.entryDate}
                       onChange={(e) => handleChange(index, e)}
                       required
                       className="w-full border rounded px-3 py-2"

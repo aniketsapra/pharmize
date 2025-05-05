@@ -62,6 +62,7 @@ function Medicines() {
                 <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Batch #</TableHead>
+                <TableHead>Entry</TableHead>
                 <TableHead>Expiry</TableHead>
                 <TableHead>Qty</TableHead>
                 <TableHead>Cost (₹)</TableHead>
@@ -78,6 +79,7 @@ function Medicines() {
                     <TableCell>{med.id}</TableCell>
                     <TableCell>{med.name}</TableCell>
                     <TableCell>{med.batch_number}</TableCell>
+                    <TableCell>{med.entry_date}</TableCell>
                     <TableCell>{med.expiry_date}</TableCell>
                     <TableCell>{med.quantity}</TableCell>
                     <TableCell>{med.cost_price}</TableCell>

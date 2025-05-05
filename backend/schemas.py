@@ -47,6 +47,7 @@ class CustomerResponse(BaseModel):
 class MedicineCreate(BaseModel):
     name: str
     batchNumber: str
+    entryDate: date
     expiryDate: date
     quantity: int
     costPrice: float
