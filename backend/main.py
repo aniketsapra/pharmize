@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import os
 from models import Customer, Supplier, Invoice, InvoiceItem, Medicine
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, date
 
 
 
@@ -109,9 +109,21 @@ def get_dashboard(user: str = Depends(get_current_user)):
 
 
 @app.post("/medicine/create")
-def create_medicines(medicines: list[schemas.MedicineCreate], db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+def create_medicines(
+    medicines: list[schemas.MedicineCreate],
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user)
+):
     try:
+        # Step 0: Generate a new P_ID (max existing + 1)
+        last_purchase = db.query(models.Purchase).order_by(models.Purchase.P_ID.desc()).first()
+        new_p_id = (last_purchase.P_ID + 1) if last_purchase and last_purchase.P_ID else 1
+
         for med in medicines:
+            supplier = db.query(models.Supplier).filter(models.Supplier.SUID == med.SUID).first()
+            if not supplier:
+                raise HTTPException(status_code=404, detail=f"Supplier with SUID {med.SUID} not found.")
+
             db_medicine = models.Medicine(
                 name=med.name,
                 batch_number=med.batchNumber,
@@ -123,14 +135,43 @@ def create_medicines(medicines: list[schemas.MedicineCreate], db: Session = Depe
                 SUID=med.SUID
             )
             db.add(db_medicine)
-        
-        db.commit()  # Commit the transaction
-        return {"message": f"{len(medicines)} medicines added successfully."}
-    
+            db.flush()
+
+            db_purchase = models.Purchase(
+                P_ID=new_p_id,  
+                medicine_id=db_medicine.id,
+                medicine_name=med.name,
+                suid=med.SUID,
+                supplier_name=supplier.name,
+                quantity=med.quantity,
+                unit_price=float(med.costPrice),
+                total_price=float(med.quantity) * float(med.costPrice),
+                date=med.entryDate
+            )
+            db.add(db_purchase)
+
+        db.commit()
+        return {"message": f"{len(medicines)} medicines and purchases added successfully under P_ID {new_p_id}."}
+
     except Exception as e:
-        db.rollback()  # Rollback in case of error
+        db.rollback()
         raise HTTPException(status_code=400, detail=f"Error adding medicines: {str(e)}")
-    
+
+
+@app.delete("/medicine/{medicine_id}", status_code=200)
+def delete_medicine(
+    medicine_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)  # Ensure user is authenticated
+):
+    medicine = db.query(Medicine).filter(Medicine.id == medicine_id).first()
+    if not medicine:
+        raise HTTPException(status_code=404, detail="Medicine not found")
+
+    db.delete(medicine)
+    db.commit()
+    return {"detail": "Medicine deleted successfully"}
+
 
 @app.get("/medicines")
 def get_medicines(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
@@ -150,6 +191,7 @@ def get_medicines(db: Session = Depends(get_db), user: str = Depends(get_current
         }
         for m in medicines
     ]
+
 
 @app.post("/invoice/create")
 def create_invoice(invoice_data: schemas.InvoiceCreate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):

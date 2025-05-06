@@ -46,6 +46,30 @@ function Medicines() {
     medicine.SUID.toString().includes(suidFilter)
   )
   
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this medicine?");
+    if (!confirmDelete) return;
+  
+    try {
+      const response = await fetch(`http://localhost:8000/medicine/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+  
+      if (response.ok) {
+        setMedicines((prev) => prev.filter((med) => med.id !== id));
+      } else {
+        const errorData = await response.json();
+        alert("Failed to delete medicine: " + errorData.detail);
+      }
+    } catch (error) {
+      console.error("Error deleting medicine:", error);
+      alert("Something went wrong while deleting the medicine.");
+    }
+  };
+  
 
   return (
     <div className="p-6">

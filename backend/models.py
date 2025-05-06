@@ -20,6 +20,7 @@ class Supplier(Base):
     address = Column(String(500), nullable=False)
 
     medicines = relationship("Medicine", back_populates="supplier")
+    purchases = relationship("Purchase", back_populates="supplier")  
 
 class Customer(Base):
     __tablename__ = "customers"
@@ -45,6 +46,26 @@ class Medicine(Base):
     
     supplier = relationship("Supplier", back_populates="medicines")
     invoice_items = relationship("InvoiceItem", back_populates="medicine")
+    purchases = relationship("Purchase", back_populates="medicine") 
+    
+class Purchase(Base):
+    __tablename__ = "purchases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    P_ID = Column(Integer, index=True)  # ✅ Add this line for grouping
+    medicine_id = Column(Integer, ForeignKey("medicines.id"))
+    medicine_name = Column(String(100))  # ✅ new
+    suid = Column(Integer, ForeignKey("suppliers.SUID"))
+    supplier_name = Column(String(100))  # ✅ new
+    quantity = Column(Integer)
+    unit_price = Column(Float)
+    total_price = Column(Float)
+    date = Column(Date)
+
+    supplier = relationship("Supplier", back_populates="purchases")
+    medicine = relationship("Medicine", back_populates="purchases")
+
+
 
 class Invoice(Base):
     __tablename__ = "invoices"
