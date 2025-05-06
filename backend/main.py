@@ -315,64 +315,56 @@ def get_purchase_report(
 
 @app.get("/sales-report")
 def get_sales_report(
-    start_date: str = Query(...),
-    end_date: str = Query(...),
-    cuid: str = Query(None),
-    db: Session = Depends(get_db),
-    user: str = Depends(get_current_user)
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    customer_id: int = None,
+    db: Session = Depends(get_db)
 ):
-    try:
-        # Parse date strings into datetime objects
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    query = db.query(Invoice).filter(Invoice.date.between(start_date, end_date))
 
-        # Query invoices in the specified date range
-        invoice_query = db.query(Invoice).filter(
-            Invoice.date >= start_dt,
-            Invoice.date <= end_dt
-        )
+    if customer_id:
+        query = query.filter(Invoice.CUID == customer_id)
 
-        if cuid:
-            invoice_query = invoice_query.filter(Invoice.CUID == cuid)
+    invoices = query.all()
 
-        invoices = invoice_query.all()
-        invoice_ids = [inv.id for inv in invoices]
+    report = []
+    total_amount = 0.0
+    total_quantity = 0
 
-        if not invoice_ids:
-            return {
-                "total_quantity": 0,
-                "total_amount": 0,
-                "data": []
-            }
+    for invoice in invoices:
+        customer = db.query(Customer).filter(Customer.CUID == invoice.CUID).first()
+        items = db.query(InvoiceItem).filter(InvoiceItem.invoice_id == invoice.id).all()
 
-        # Fetch invoice items for the filtered invoices
-        items = db.query(InvoiceItem).filter(InvoiceItem.invoice_id.in_(invoice_ids)).all()
+        item_list = []
+        amount_before_discount = 0.0
 
-        total_quantity = sum(item.quantity for item in items)
-        total_amount = sum(item.quantity * item.unit_price for item in items)
-
-        # Prepare the sales report data
-        report_data = []
         for item in items:
-            invoice = next((inv for inv in invoices if inv.id == item.invoice_id), None)
-            customer = invoice.customer if invoice else None
-            medicine = item.medicine
-
-            report_data.append({
-                "invoice_id": item.invoice_id,
-                "invoice_date": invoice.date.strftime("%Y-%m-%d") if invoice else "Unknown",
-                "customer_name": customer.name if customer else "Unknown",
-                "medicine_name": medicine.name if medicine else "Unknown",
+            medicine = db.query(Medicine).filter(Medicine.id == item.medicine_id).first()
+            subtotal = float(item.unit_price) * item.quantity
+            amount_before_discount += subtotal
+            total_quantity += item.quantity  # ⬅️ accumulate quantity
+            item_list.append({
+                "medicine_name": medicine.name,
                 "quantity": item.quantity,
                 "unit_price": float(item.unit_price),
-                "total_price": float(item.quantity * item.unit_price)
             })
 
-        return {
-            "total_quantity": total_quantity,
-            "total_amount": total_amount,
-            "data": report_data
-        }
+        total_amount += float(invoice.total_amount)  # ⬅️ accumulate amount
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        report.append({
+            "id": invoice.id,
+            "date": invoice.date,
+            "CUID": invoice.CUID,
+            "customer_name": customer.name,
+            "customer_address": customer.address,
+            "discount": float(invoice.discount),
+            "total_amount": float(invoice.total_amount),
+            "amount_before_discount": round(amount_before_discount, 2),
+            "items": item_list
+        })
+
+    return {
+        "invoices": report,
+        "total_amount": round(total_amount, 2),
+        "total_quantity": total_quantity
+    }

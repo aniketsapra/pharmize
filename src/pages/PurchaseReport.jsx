@@ -41,7 +41,6 @@ const PurchaseReport = () => {
     }
   };
 
-  // 📌 On mount, set default dates (last 3 months) and fetch initial report
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     const threeMonthsAgo = getDateMonthsAgo(3);
