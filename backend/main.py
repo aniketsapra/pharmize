@@ -10,8 +10,7 @@ from dotenv import load_dotenv
 import os
 from models import Customer, Supplier, Invoice, InvoiceItem, Medicine, Purchase
 from sqlalchemy import func
-from datetime import datetime, date
-
+from datetime import datetime, date, timedelta
 
 
 load_dotenv()
@@ -415,3 +414,32 @@ def get_sales_report(
         "total_amount": round(total_amount, 2),
         "total_quantity": total_quantity
     }
+    
+
+@app.get("/dashboard/totals")
+def get_dashboard_totals(db: Session = Depends(get_db)):
+    total_medicines = db.query(Medicine).count()
+    total_suppliers = db.query(Supplier).count()
+    total_customers = db.query(Customer).count()
+    total_invoices = db.query(Invoice).count()
+
+    return {
+        "medicines": total_medicines,
+        "suppliers": total_suppliers,
+        "customers": total_customers,
+        "invoices": total_invoices,
+    }
+
+
+# Endpoint to get medicines with quantity less than or equal to 20
+@app.get("/medicines/low-quantity")
+def get_medicines_low_quantity(db: Session = Depends(get_db)):
+    medicines = db.query(models.Medicine).filter(models.Medicine.quantity <= 20).all()
+    return medicines
+
+# Endpoint to get medicines near expiry (within the next month)
+@app.get("/medicines/near-expiry")
+def get_medicines_near_expiry(db: Session = Depends(get_db)):
+    one_month_later = datetime.now() + timedelta(days=30)
+    medicines = db.query(models.Medicine).filter(models.Medicine.expiry_date <= one_month_later).all()
+    return medicines

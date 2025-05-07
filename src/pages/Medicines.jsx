@@ -95,7 +95,7 @@ function Medicines() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {medicines.filter(med => med.quantity <= 30).map(med => (
+                  {medicines.filter(med => med.quantity <= 20).map(med => (
                     <TableRow key={med.id}>
                       <TableCell>{med.id}</TableCell>
                       <TableCell>{med.name}</TableCell>
@@ -149,7 +149,7 @@ function Medicines() {
 
       <div className="flex gap-4">
         {/* Table */}
-        <div className="w-[80%] border rounded-md">
+        <div className="w-[80%] border">
   <Table>
     <TableHeader>
       <TableRow>
