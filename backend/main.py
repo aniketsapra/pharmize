@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import models, schemas
 from database import SessionLocal, engine 
 from typing import List
-from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, InvoiceItemResponse
+from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, InvoiceItemResponse, CustomerUpdate, SupplierUpdate
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from dotenv import load_dotenv
 import os
@@ -98,10 +98,39 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
 def get_suppliers(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     return db.query(Supplier).all()
 
+@app.put("/supplier/update/{suid}")
+def update_supplier(suid: int, updated: SupplierUpdate, db: Session = Depends(get_db)):
+    supplier = db.query(Supplier).filter(Supplier.SUID == suid).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    supplier.name = updated.name
+    supplier.address = updated.address
+    supplier.phone = updated.phone
+    supplier.email = updated.email
+    db.commit()
+    db.refresh(supplier)
+
+    return supplier  # 👈 return the updated supplier object, not just a message
+
 
 @app.get("/customers", response_model=List[CustomerResponse])
 def get_customers(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     return db.query(Customer).all()
+
+@app.put("/customer/{cuid}/update")
+def update_customer(cuid: str, updated_data: CustomerUpdate, db: Session = Depends(get_db)):
+    customer = db.query(Customer).filter(Customer.CUID == cuid).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    for field, value in updated_data.dict(exclude_unset=True).items():
+        setattr(customer, field, value)
+    
+    db.commit()
+    db.refresh(customer)
+    return customer
+
 
 @app.get("/dashboard")
 def get_dashboard(user: str = Depends(get_current_user)):

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-function customers() {
+function Customers() {
   const [customers, setCustomers] = useState([])
+  const [editRow, setEditRow] = useState(null) // track which row is being edited
+  const [editData, setEditData] = useState({}) // track data being edited
 
-  // Separate filters
   const [nameFilter, setNameFilter] = useState("")
   const [addressFilter, setAddressFilter] = useState("")
   const [phoneFilter, setPhoneFilter] = useState("")
@@ -28,13 +29,56 @@ function customers() {
     fetchCustomers()
   }, [])
 
-  // Filter based on inputs
   const filteredCustomers = customers.filter((customer) =>
     customer.name.toLowerCase().includes(nameFilter.toLowerCase()) &&
     customer.address.toLowerCase().includes(addressFilter.toLowerCase()) &&
     customer.phone.toLowerCase().includes(phoneFilter.toLowerCase()) &&
     customer.email.toLowerCase().includes(emailFilter.toLowerCase())
   )
+
+  const handleEdit = (cuid, customer) => {
+    setEditRow(cuid)
+    setEditData({ ...customer })
+  }
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target
+    setEditData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSave = async (cuid) => {
+    try {
+      const response = await fetch(`http://localhost:8000/customer/${cuid}/update`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(editData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update customer.")
+      }
+
+      const updatedCustomer = await response.json()
+
+      setCustomers((prev) =>
+        prev.map((cust) => (cust.CUID === cuid ? updatedCustomer : cust))
+      )
+
+      setEditRow(null)
+      setEditData({})
+    } catch (error) {
+      console.error("Error updating customer:", error)
+      alert("Update failed.")
+    }
+  }
+
+  const handleCancel = () => {
+    setEditRow(null)
+    setEditData({})
+  }
 
   return (
     <div className="p-6">
@@ -43,7 +87,6 @@ function customers() {
       <hr className="mb-6 border-gray-300" />
 
       <div className="flex gap-4">
-        {/* Left side - Table */}
         <div className="w-[80%]">
           <Table>
             <TableHeader>
@@ -53,26 +96,95 @@ function customers() {
                 <TableHead>Address</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCustomers.map((customer) => (
                 <TableRow key={customer.CUID}>
                   <TableCell>{customer.CUID}</TableCell>
-                  <TableCell>{customer.name}</TableCell>
-                  <TableCell>{customer.address}</TableCell>
-                  <TableCell>{customer.phone}</TableCell>
-                  <TableCell>{customer.email}</TableCell>
+                  <TableCell>
+                    {editRow === customer.CUID ? (
+                      <input
+                        type="text"
+                        name="name"
+                        value={editData.name}
+                        onChange={handleEditChange}
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    ) : (
+                      customer.name
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editRow === customer.CUID ? (
+                      <input
+                        type="text"
+                        name="address"
+                        value={editData.address}
+                        onChange={handleEditChange}
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    ) : (
+                      customer.address
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editRow === customer.CUID ? (
+                      <input
+                        type="text"
+                        name="phone"
+                        value={editData.phone}
+                        onChange={handleEditChange}
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    ) : (
+                      customer.phone
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editRow === customer.CUID ? (
+                      <input
+                        type="text"
+                        name="email"
+                        value={editData.email}
+                        onChange={handleEditChange}
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    ) : (
+                      customer.email
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editRow === customer.CUID ? (
+                      <>
+                        <button
+                          onClick={() => handleSave(customer.CUID)}
+                          className="text-green-600 mr-2"
+                        >
+                          Save
+                        </button>
+                        <button onClick={handleCancel} className="text-red-600">
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleEdit(customer.CUID, customer)}
+                        className="text-blue-600"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
 
-        {/* Right side - Filter inputs */}
         <div className="w-[20%] border-l pl-4 space-y-4">
           <h2 className="text-lg font-semibold">Filter Customers</h2>
-          
           <div>
             <label className="block text-sm font-medium text-gray-700">Name</label>
             <input
@@ -83,7 +195,6 @@ function customers() {
               placeholder="Search by name"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Address</label>
             <input
@@ -94,7 +205,6 @@ function customers() {
               placeholder="Search by address"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Phone</label>
             <input
@@ -105,7 +215,6 @@ function customers() {
               placeholder="Search by phone"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
             <input
@@ -122,4 +231,4 @@ function customers() {
   )
 }
 
-export default customers
+export default Customers

@@ -27,6 +27,12 @@ class SupplierResponse(BaseModel):
     class Config:
         orm_mode = True
 
+class SupplierUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    address: Optional[str] = None
+
 class CustomerCreate(BaseModel):
     name: str
     phone: str
@@ -43,6 +49,12 @@ class CustomerResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    address: Optional[str] = None
 
 class MedicineCreate(BaseModel):
     name: str

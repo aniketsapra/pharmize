@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 
 function CustomerCreate() {
-  const [Customer, setCustomer] = useState({
+  const [customer, setCustomer] = useState({
     name: '',
     phone: '',
     email: '',
     address: '',
   });
+
+  const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -14,31 +16,53 @@ function CustomerCreate() {
       ...prev,
       [name]: value,
     }));
+
+    // Clear error on input change
+    setErrors((prevErrors) => ({
+      ...prevErrors,
+      [name]: '',
+    }));
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!customer.name.trim()) newErrors.name = 'Name is required.';
+    if (!customer.phone.trim()) newErrors.phone = 'Phone number is required.';
+    if (!customer.email.trim()) newErrors.email = 'Email is required.';
+    if (!customer.address.trim()) newErrors.address = 'Address is required.';
+    return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     try {
-      const response = await fetch("http://localhost:8000/customer/create", {
-        method: "POST",
+      const response = await fetch('http://localhost:8000/customer/create', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // if JWT protected
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify(Customer),
+        body: JSON.stringify(customer),
       });
-  
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || "Something went wrong");
+        throw new Error(error.detail || 'Something went wrong');
       }
-  
+
       const result = await response.json();
-      console.log("Customer added:", result);
-      alert("Customer added successfully");
-  
-      setCustomer({ name: "", phone: "", email: "", address: "" });
+      console.log('Customer added:', result);
+      alert('Customer added successfully');
+
+      setCustomer({ name: '', phone: '', email: '', address: '' });
+      setErrors({});
     } catch (err) {
       alert(err.message);
     }
@@ -46,7 +70,6 @@ function CustomerCreate() {
 
   return (
     <div className="p-6">
-      {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Add a Customer</h1>
         <p className="text-gray-600 mt-1">
@@ -55,58 +78,36 @@ function CustomerCreate() {
         <hr className="mt-4 border-gray-300" />
       </div>
 
-      {/* Customer Form */}
       <div className="max-w-md bg-white shadow-md rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Customer Details</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-
-          <div>
-            <label className="block font-medium mb-1">Customer Name</label>
-            <input
-              type="text"
-              name="name"
-              value={Customer.name}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block font-medium mb-1">Phone Number</label>
-            <input
-              type="tel"
-              name="phone"
-              value={Customer.phone}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block font-medium mb-1">Email Address</label>
-            <input
-              type="email"
-              name="email"
-              value={Customer.email}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block font-medium mb-1">Address</label>
-            <textarea
-              name="address"
-              value={Customer.address}
-              onChange={handleChange}
-              required
-              rows="3"
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
-            ></textarea>
-          </div>
+          {['name', 'phone', 'email', 'address'].map((field) => (
+            <div key={field}>
+              <label className="block font-medium mb-1 capitalize">
+                {field === 'name' ? 'Customer Name' :
+                 field === 'phone' ? 'Phone Number' :
+                 field === 'email' ? 'Email Address' : 'Address'}
+              </label>
+              {field === 'address' ? (
+                <textarea
+                  name={field}
+                  value={customer[field]}
+                  onChange={handleChange}
+                  rows="3"
+                  className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring ${errors[field] ? 'border-red-500' : 'border-gray-300'}`}
+                />
+              ) : (
+                <input
+                  type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'}
+                  name={field}
+                  value={customer[field]}
+                  onChange={handleChange}
+                  className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring ${errors[field] ? 'border-red-500' : 'border-gray-300'}`}
+                />
+              )}
+              {errors[field] && <p className="text-red-600 text-sm mt-1">{errors[field]}</p>}
+            </div>
+          ))}
 
           <button
             type="submit"
