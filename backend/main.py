@@ -8,7 +8,7 @@ from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, Invoice
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from dotenv import load_dotenv
 import os
-from models import Customer, Supplier, Invoice, InvoiceItem, Medicine
+from models import Customer, Supplier, Invoice, InvoiceItem, Medicine, Purchase
 from sqlalchemy import func
 from datetime import datetime, date
 
@@ -295,6 +295,7 @@ def get_invoices(db: Session = Depends(get_db), user: str = Depends(get_current_
 
     return response
 
+
 @app.get("/purchase-report")
 def get_purchase_report(
     start_date: str = Query(...),
@@ -304,40 +305,57 @@ def get_purchase_report(
     user: str = Depends(get_current_user)
 ):
     try:
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-        query = db.query(Medicine).filter(
-            Medicine.entry_date >= start_dt,
-            Medicine.entry_date <= end_dt
+        # Query the Purchase table, not a variable called "purchases"
+        query = db.query(Purchase).filter(
+            Purchase.date >= start_dt,
+            Purchase.date <= end_dt
         )
 
         if suid:
-            query = query.filter(Medicine.SUID == suid)
+            query = query.filter(Purchase.suid == suid)
 
-        medicines = query.all()
+        purchase_entries = query.order_by(Purchase.date.desc(), Purchase.P_ID.desc()).all()
 
-        total_qty = sum(m.quantity for m in medicines)
-        total_amount = sum(m.quantity * m.cost_price for m in medicines)
+        grouped = {}
+        total_qty = 0
+        total_amount = 0.0
 
-        report_data = []
-        for m in medicines:
-            report_data.append({
-                "id": m.id,
-                "medicine_name": m.name,
-                "supplier_name": m.supplier.name if m.supplier else "Unknown",
-                "quantity": m.quantity,
-                "unit_price": float(m.cost_price),
-                "total_cost": float(m.quantity * m.cost_price),
-                "entry_date": m.entry_date.strftime("%Y-%m-%d")
-            })
+        for p in purchase_entries:
+            pid = p.P_ID
+            if pid not in grouped:
+                grouped[pid] = {
+                    "purchase_id": pid,
+                    "date": p.date.strftime("%Y-%m-%d"),
+                    "suid": p.suid,  # Add this
+                    "supplier_name": p.supplier_name, 
+                    "items": [],
+                    "total_amount": 0.0,
+                    "total_quantity": 0
+                }
+
+            item = {
+                "medicine_name": p.medicine_name,
+                "supplier_name": p.supplier_name,
+                "quantity": p.quantity,
+                "unit_price": float(p.unit_price),
+                "total_cost": float(p.total_price)
+            }
+
+            grouped[pid]["items"].append(item)
+            grouped[pid]["total_amount"] += item["total_cost"]
+            grouped[pid]["total_quantity"] += item["quantity"]
+            total_qty += item["quantity"]
+            total_amount += item["total_cost"]
 
         return {
             "total_quantity": total_qty,
-            "total_amount": total_amount,
-            "data": report_data
+            "total_amount": round(total_amount, 2),
+            "data": list(grouped.values())
         }
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -354,7 +372,7 @@ def get_sales_report(
     if customer_id:
         query = query.filter(Invoice.CUID == customer_id)
 
-    invoices = query.all()
+    invoices = query.order_by(Invoice.date.desc(), Invoice.id.desc()).all()
 
     report = []
     total_amount = 0.0

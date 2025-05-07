@@ -141,8 +141,8 @@ const SalesReport = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Invoice No.</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead>Invoice No.</TableHead>
               <TableHead>CUID</TableHead>
               <TableHead>Customer Name</TableHead>
               <TableHead>Total Amount (₹)</TableHead>
@@ -162,8 +162,8 @@ const SalesReport = () => {
                     className="cursor-pointer hover:bg-gray-100"
                     onClick={() => toggleExpand(invoice.id)}
                   >
+                    <TableCell>{new Date(invoice.date).toISOString().split("T")[0]}</TableCell>
                     <TableCell>{invoice.id}</TableCell>
-                    <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
                     <TableCell>{invoice.CUID}</TableCell>
                     <TableCell>{invoice.customer_name}</TableCell>
                     <TableCell>₹{invoice.total_amount}</TableCell>
