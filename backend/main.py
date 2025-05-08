@@ -9,7 +9,7 @@ from auth import hash_password, verify_password, create_access_token, get_curren
 from dotenv import load_dotenv
 import os
 from models import Customer, Supplier, Invoice, InvoiceItem, Medicine, Purchase
-from sqlalchemy import func
+from sqlalchemy import func, extract
 from datetime import datetime, date, timedelta
 
 
@@ -443,3 +443,29 @@ def get_medicines_near_expiry(db: Session = Depends(get_db)):
     one_month_later = datetime.now() + timedelta(days=30)
     medicines = db.query(models.Medicine).filter(models.Medicine.expiry_date <= one_month_later).all()
     return medicines
+
+@app.get("/dashboard/monthly-sales")
+def get_monthly_sales(db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    try:
+        sales_data = (
+            db.query(
+                extract("year", Invoice.date).label("year"),
+                extract("month", Invoice.date).label("month"),
+                func.sum(Invoice.total_amount).label("total")
+            )
+            .group_by("year", "month")
+            .order_by("year", "month")
+            .all()
+        )
+
+        result = [
+            {
+                "month": f"{int(record.month):02d}-{int(record.year)}",  # e.g., "04-2025"
+                "total": float(record.total)
+            }
+            for record in sales_data
+        ]
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
