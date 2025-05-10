@@ -12,27 +12,32 @@ import dayjs from "dayjs";
 
 function Medicines() {
   const [medicines, setMedicines] = useState([]);
+  const [archivedMedicines, setArchivedMedicines] = useState([]);
   const [nameFilter, setNameFilter] = useState("");
   const [batchFilter, setBatchFilter] = useState("");
-  const [expandedRow, setExpandedRow] = useState(null);
   const [supplierFilter, setSupplierFilter] = useState("");
   const [suidFilter, setSuidFilter] = useState("");
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [isArchiveTableVisible, setIsArchiveTableVisible] = useState(false); // State for collapse/expand
+  
+  const fetchMedicines = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/medicines?include_inactive=true", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      const active = data.filter((med) => med.is_active !== false);
+      const archived = data.filter((med) => med.is_active === false);
+      setMedicines(active);
+      setArchivedMedicines(archived);
+    } catch (error) {
+      console.error("Error fetching medicines:", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchMedicines = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/medicines", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        const data = await response.json();
-        setMedicines(data);
-      } catch (error) {
-        console.error("Error fetching medicines:", error);
-      }
-    };
-
     fetchMedicines();
   }, []);
 
@@ -40,27 +45,20 @@ function Medicines() {
     setExpandedRow((prev) => (prev === id ? null : id));
   };
 
-  const filteredMedicines = medicines.filter((medicine) =>
-    medicine.name.toLowerCase().includes(nameFilter.toLowerCase()) &&
-    medicine.batch_number.toLowerCase().includes(batchFilter.toLowerCase()) &&
-    (medicine.supplier_name?.toLowerCase() || "").includes(supplierFilter.toLowerCase()) &&
-    medicine.SUID.toString().includes(suidFilter)
-  );
-
   const handleDelete = async (id) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this medicine?");
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/medicine/${id}`, {
-        method: "DELETE",
+      const response = await fetch(`http://localhost:8000/medicine/${id}/archive`, {
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
       if (response.ok) {
-        setMedicines((prev) => prev.filter((med) => med.id !== id));
+        await fetchMedicines(); // ← REFETCH here
       } else {
         const errorData = await response.json();
         alert("Failed to delete medicine: " + errorData.detail);
@@ -70,6 +68,13 @@ function Medicines() {
       alert("Something went wrong while deleting the medicine.");
     }
   };
+
+  const filteredMedicines = medicines.filter((medicine) =>
+    medicine.name.toLowerCase().includes(nameFilter.toLowerCase()) &&
+    medicine.batch_number.toLowerCase().includes(batchFilter.toLowerCase()) &&
+    (medicine.supplier_name?.toLowerCase() || "").includes(supplierFilter.toLowerCase()) &&
+    medicine.SUID.toString().includes(suidFilter)
+  );
 
   return (
     <div className="p-6">
@@ -95,7 +100,7 @@ function Medicines() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {medicines.filter(med => med.quantity <= 20).map(med => (
+                  {medicines.filter(med => med.quantity <= 20 && med.is_active !== false).map(med => (
                     <TableRow key={med.id}>
                       <TableCell>{med.id}</TableCell>
                       <TableCell>{med.name}</TableCell>
@@ -130,7 +135,7 @@ function Medicines() {
                     .filter((med) => {
                       const expiry = dayjs(med.expiry_date);
                       const now = dayjs();
-                      return expiry.isAfter(now) && expiry.diff(now, "day") <= 30;
+                      return med.is_active !== false && expiry.isAfter(now) && expiry.diff(now, "day") <= 30;
                     })
                     .map((med) => (
                       <TableRow key={med.id}>
@@ -148,77 +153,75 @@ function Medicines() {
       </div>
 
       <div className="flex gap-4">
-        {/* Table */}
+        {/* Active Medicines Table */}
         <div className="w-[80%] border">
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead className="sticky top-0 z-10 bg-white">ID</TableHead>
-        <TableHead className="sticky top-0 z-10 bg-white">Name</TableHead>
-        <TableHead className="sticky top-0 z-10 bg-white">Batch #</TableHead>
-        <TableHead className="sticky top-0 z-10 bg-white">Entry</TableHead>
-        <TableHead className="sticky top-0 z-10 bg-white">Expiry</TableHead>
-        <TableHead className="sticky top-0 z-10 bg-white">Qty</TableHead>
-        <TableHead className="sticky top-0 z-10 bg-white">Cost (₹)</TableHead>
-        <TableHead className="sticky top-0 z-10 bg-white">Actions</TableHead>
-      </TableRow>
-    </TableHeader>
-  </Table>
-
-  {/* Scrollable table body */}
-  <div className="max-h-[450px] overflow-auto">
-    <Table>
-      <TableBody>
-        {filteredMedicines.map((med) => (
-          <React.Fragment key={med.id}>
-            <TableRow
-              onClick={() => toggleRow(med.id)}
-              className="cursor-pointer hover:bg-gray-100 transition"
-            >
-              <TableCell>{med.id}</TableCell>
-              <TableCell>{med.name}</TableCell>
-              <TableCell>{med.batch_number}</TableCell>
-              <TableCell>{med.entry_date}</TableCell>
-              <TableCell>{med.expiry_date}</TableCell>
-              <TableCell>{med.quantity}</TableCell>
-              <TableCell>{med.cost_price}</TableCell>
-              <TableCell>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(med.id)
-                  }}
-                  className="text-red-600 hover:underline"
-                >
-                  Delete
-                </button>
-              </TableCell>
-            </TableRow>
-
-            {expandedRow === med.id && (
-              <TableRow className="bg-gray-50">
-                <TableCell colSpan={8} className="py-3">
-                  <div className="space-y-1">
-                    <p><strong>Medicine ID:</strong> {med.id}</p>
-                    <p><strong>Medicine Name:</strong> {med.name}</p>
-                    <p><strong>SUID:</strong> {med.SUID}</p>
-                    <p><strong>Supplier Name:</strong> {med.supplier_name || "N/A"}</p>
-                    <p><strong>Description:</strong> {med.description || "N/A"}</p>
-                  </div>
-                </TableCell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky top-0 z-10 bg-white">ID</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-white">Name</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-white">Batch #</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-white">Entry</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-white">Expiry</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-white">Qty</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-white">Cost (₹)</TableHead>
+                <TableHead className="sticky top-0 z-10 bg-white">Actions</TableHead>
               </TableRow>
-            )}
-          </React.Fragment>
-        ))}
-      </TableBody>
-    </Table>
-  </div>
-</div>
+            </TableHeader>
+          </Table>
+
+          <div className="max-h-[450px] overflow-auto">
+            <Table>
+              <TableBody>
+                {filteredMedicines.map((med) => (
+                  <React.Fragment key={med.id}>
+                    <TableRow
+                      onClick={() => toggleRow(med.id)}
+                      className="cursor-pointer hover:bg-gray-100 transition"
+                    >
+                      <TableCell>{med.id}</TableCell>
+                      <TableCell>{med.name}</TableCell>
+                      <TableCell>{med.batch_number}</TableCell>
+                      <TableCell>{med.entry_date}</TableCell>
+                      <TableCell>{med.expiry_date}</TableCell>
+                      <TableCell>{med.quantity}</TableCell>
+                      <TableCell>{med.cost_price}</TableCell>
+                      <TableCell>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(med.id);
+                          }}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </TableCell>
+                    </TableRow>
+
+                    {expandedRow === med.id && (
+                      <TableRow className="bg-gray-50">
+                        <TableCell colSpan={8} className="py-3">
+                          <div className="space-y-1">
+                            <p><strong>Medicine ID:</strong> {med.id}</p>
+                            <p><strong>Medicine Name:</strong> {med.name}</p>
+                            <p><strong>SUID:</strong> {med.SUID}</p>
+                            <p><strong>Supplier Name:</strong> {med.supplier_name || "N/A"}</p>
+                            <p><strong>Description:</strong> {med.description || "N/A"}</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="w-[20%] border-l pl-4 space-y-4">
           <h2 className="text-lg font-semibold">Filter Medicines</h2>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Medicine Name</label>
             <input
@@ -229,7 +232,6 @@ function Medicines() {
               placeholder="Search by name"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Batch Number</label>
             <input
@@ -240,7 +242,6 @@ function Medicines() {
               placeholder="Search by batch"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Supplier Name</label>
             <input
@@ -251,7 +252,6 @@ function Medicines() {
               placeholder="Search by supplier"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Supplier ID (SUID)</label>
             <input
@@ -264,6 +264,46 @@ function Medicines() {
           </div>
         </div>
       </div>
+
+      {archivedMedicines.length > 0 && (
+        <div className="mt-10 border-t pt-6">
+          <h2 className="text-xl font-semibold mb-4">
+            <button
+              onClick={() => setIsArchiveTableVisible(!isArchiveTableVisible)}
+              className="text-blue-600 hover:underline"
+            >
+              {isArchiveTableVisible ? "Hide Archived Medicines" : "Show Archived Medicines"}
+            </button>
+          </h2>
+
+          {isArchiveTableVisible && (
+            <div className="max-h-[300px] overflow-auto border rounded">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Batch #</TableHead>
+                    <TableHead>Expiry</TableHead>
+                    <TableHead>Qty</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {archivedMedicines.map((med) => (
+                    <TableRow key={med.id}>
+                      <TableCell>{med.id}</TableCell>
+                      <TableCell>{med.name}</TableCell>
+                      <TableCell>{med.batch_number}</TableCell>
+                      <TableCell>{dayjs(med.expiry_date).format("YYYY-MM-DD")}</TableCell>
+                      <TableCell>{med.quantity}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

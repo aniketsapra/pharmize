@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DECIMAL, Text, Date, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, DECIMAL, Text, Date, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -43,10 +43,12 @@ class Medicine(Base):
     cost_price = Column(DECIMAL(10, 2), nullable=False)
     description = Column(Text)
     SUID = Column(Integer, ForeignKey("suppliers.SUID"), nullable=False)
+    is_active = Column(Boolean, default=True)  # Add this column
     
     supplier = relationship("Supplier", back_populates="medicines")
     invoice_items = relationship("InvoiceItem", back_populates="medicine")
-    purchases = relationship("Purchase", back_populates="medicine") 
+    purchases = relationship("Purchase", back_populates="medicine")
+ 
     
 class Purchase(Base):
     __tablename__ = "purchases"

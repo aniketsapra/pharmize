@@ -1,6 +1,8 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date
 from typing import Optional, List
+from models import Medicine  # or wherever your Medicine model is defined
+
 
 class UserCreate(BaseModel):
     username: str
@@ -65,7 +67,32 @@ class MedicineCreate(BaseModel):
     costPrice: float
     description: Optional[str] = None
     SUID: int
-    
+
+class MedicineOut(BaseModel):
+    id: int
+    name: str
+    batch_number: str
+    entry_date: date
+    expiry_date: date
+    quantity: int
+    cost_price: float
+    description: str | None = None
+    SUID: int
+    supplier_name: str | None = None
+    archived: bool  # Derived field
+
+    class Config:
+        orm_mode = True
+
+    @staticmethod
+    def from_orm_with_archived(medicine: Medicine):
+        return MedicineOut(
+            **medicine.__dict__,
+            supplier_name=medicine.supplier.name if medicine.supplier else None,
+            archived=not medicine.is_active
+        )
+
+
 class InvoiceItemCreate(BaseModel):
     medicineId: int
     quantity: int

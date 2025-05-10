@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import models, schemas
 from database import SessionLocal, engine 
 from typing import List
-from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, InvoiceItemResponse, CustomerUpdate, SupplierUpdate
+from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, InvoiceItemResponse, CustomerUpdate, SupplierUpdate, MedicineOut
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from dotenv import load_dotenv
 import os
@@ -186,24 +186,49 @@ def create_medicines(
         raise HTTPException(status_code=400, detail=f"Error adding medicines: {str(e)}")
 
 
-@app.delete("/medicine/{medicine_id}", status_code=200)
-def delete_medicine(
+@app.patch("/medicine/{medicine_id}/archive", response_model=MedicineOut, status_code=200)
+def archive_medicine(
     medicine_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)  # Ensure user is authenticated
+    current_user: dict = Depends(get_current_user)
 ):
     medicine = db.query(Medicine).filter(Medicine.id == medicine_id).first()
     if not medicine:
         raise HTTPException(status_code=404, detail="Medicine not found")
 
-    db.delete(medicine)
+    medicine.is_active = False
     db.commit()
-    return {"detail": "Medicine deleted successfully"}
+    db.refresh(medicine)
+    
+    return MedicineOut.from_orm_with_archived(medicine)
+
 
 
 @app.get("/medicines")
-def get_medicines(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
-    medicines = db.query(models.Medicine).all()
+def get_medicines(
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+    include_inactive: bool = Query(False, description="Include inactive medicines")
+):
+    today = date.today()
+
+    # First fetch all medicines
+    medicines = db.query(Medicine).all()
+
+    # Update expired medicines to inactive
+    updated = False
+    for med in medicines:
+        if med.expiry_date and med.expiry_date < today and med.is_active:
+            med.is_active = False
+            updated = True
+
+    if updated:
+        db.commit()
+
+    # Filter if not including inactive
+    if not include_inactive:
+        medicines = [m for m in medicines if m.is_active]
+
     return [
         {
             "id": m.id,
@@ -216,6 +241,7 @@ def get_medicines(db: Session = Depends(get_db), user: str = Depends(get_current
             "description": m.description,
             "SUID": m.SUID,
             "supplier_name": m.supplier.name if m.supplier else None,
+            "is_active": m.is_active
         }
         for m in medicines
     ]
@@ -259,6 +285,9 @@ def create_invoice(invoice_data: schemas.InvoiceCreate, db: Session = Depends(ge
         # Update medicine stock
         medicine = db.query(models.Medicine).filter(models.Medicine.id == item.medicineId).first()
         medicine.quantity -= item.quantity  # Decrease the quantity in stock
+        if medicine.quantity <= 0:
+            medicine.quantity = 0
+            medicine.is_active = False
 
     db.commit()
     return {"message": "Invoice created successfully", "invoice_id": invoice.id}
@@ -418,7 +447,13 @@ def get_sales_report(
 
 @app.get("/dashboard/totals")
 def get_dashboard_totals(db: Session = Depends(get_db)):
-    total_medicines = db.query(Medicine).count()
+    # Count only active medicines
+    active_medicines_query = db.query(Medicine).filter(Medicine.is_active == True)
+    total_medicines = active_medicines_query.count()
+
+    # Log the active medicines query result
+    print(f"Active Medicines Count: {total_medicines}")
+
     total_suppliers = db.query(Supplier).count()
     total_customers = db.query(Customer).count()
     total_invoices = db.query(Invoice).count()
@@ -469,3 +504,22 @@ def get_monthly_sales(db: Session = Depends(get_db), user: dict = Depends(get_cu
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@app.get("/dashboard/purchase-summary")
+def get_purchase_summary(db: Session = Depends(get_db)):
+    now = datetime.now()
+    current_month_key = f"{now.month:02d}-{now.year}"
+
+    purchases = db.query(Purchase).all()
+
+    total = sum(p.total_price for p in purchases)
+    current_month_total = sum(
+        p.total_price for p in purchases
+        if p.date.strftime("%m-%Y") == current_month_key
+    )
+
+    return {
+        "total": total,
+        "current_month": current_month_total,
+    }
