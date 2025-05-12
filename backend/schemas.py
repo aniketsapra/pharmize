@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from datetime import date
 from typing import Optional, List
 from models import Medicine  # or wherever your Medicine model is defined
-
+from datetime import datetime
 
 class UserCreate(BaseModel):
     username: str
@@ -126,3 +126,11 @@ class InvoiceResponse(BaseModel):
     class Config:
         orm_mode = True
 
+class ActivityLogSchema(BaseModel):
+    id: int
+    type: str
+    message: str
+    timestamp: datetime
+
+    class Config:
+        orm_mode = True

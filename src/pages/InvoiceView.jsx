@@ -1,4 +1,3 @@
-// Assuming a setup similar to your Medicines component
 import React, { useEffect, useState } from 'react'
 import {
   Table,
@@ -14,6 +13,9 @@ function InvoiceView() {
   const [expandedRow, setExpandedRow] = useState(null)
   const [customerFilter, setCustomerFilter] = useState("")
   const [invoiceIdFilter, setInvoiceIdFilter] = useState("")
+  const [medicineFilter, setMedicineFilter] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -36,10 +38,18 @@ function InvoiceView() {
     setExpandedRow(prev => (prev === id ? null : id))
   }
 
-  const filteredInvoices = invoices.filter(inv =>
-    inv.id.toString().includes(invoiceIdFilter) &&
-    (inv.customer_name?.toLowerCase() || "").includes(customerFilter.toLowerCase())
-  )
+  const filteredInvoices = invoices.filter(inv => {
+    const invoiceDate = new Date(inv.date)
+    const matchesCustomer = inv.customer_name?.toLowerCase().includes(customerFilter.toLowerCase())
+    const matchesInvoiceId = inv.id.toString().includes(invoiceIdFilter)
+    const matchesMedicine = inv.items.some(item =>
+      item.medicine_name?.toLowerCase().includes(medicineFilter.toLowerCase())
+    )
+    const matchesStartDate = startDate ? invoiceDate >= new Date(startDate) : true
+    const matchesEndDate = endDate ? invoiceDate <= new Date(endDate) : true
+
+    return matchesCustomer && matchesInvoiceId && matchesMedicine && matchesStartDate && matchesEndDate
+  })
 
   return (
     <div className="p-6">
@@ -76,7 +86,7 @@ function InvoiceView() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          // add delete if needed
+                          // handle delete if needed
                         }}
                         className="text-red-600 hover:underline"
                       >
@@ -101,7 +111,6 @@ function InvoiceView() {
                             ))}
                           </ul>
 
-                          {/* Calculate the amount before discount and discount amount */}
                           {(() => {
                             const amountBefore = inv.total_amount / (1 - inv.discount / 100)
                             const discountAmount = amountBefore - inv.total_amount
@@ -126,6 +135,7 @@ function InvoiceView() {
 
         <div className="w-[20%] border-l pl-4 space-y-4">
           <h2 className="text-lg font-semibold">Filter Invoices</h2>
+
           <div>
             <label className="block text-sm font-medium text-gray-700">Customer Name</label>
             <input
@@ -145,6 +155,37 @@ function InvoiceView() {
               onChange={(e) => setInvoiceIdFilter(e.target.value)}
               className="mt-1 block w-full border border-gray-300 rounded-md p-2"
               placeholder="Search by ID"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Medicine Name</label>
+            <input
+              type="text"
+              value={medicineFilter}
+              onChange={(e) => setMedicineFilter(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+              placeholder="Search by medicine"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
             />
           </div>
         </div>

@@ -13,6 +13,7 @@ import Suppliers from './pages/Suppliers';
 import SalesReport from './pages/SalesReport';
 import PurchaseReport from './pages/PurchaseReport';
 import LoginPage from './pages/LoginPage';
+import ActivityLogs from './pages/ActivityLogs';
 
 // Layout for all protected pages
 const Layout = ({ children }) => (
@@ -142,6 +143,17 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <PurchaseReport />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/activity"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ActivityLogs />
               </Layout>
             </ProtectedRoute>
           }

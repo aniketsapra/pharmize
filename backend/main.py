@@ -4,14 +4,14 @@ from sqlalchemy.orm import Session, joinedload
 import models, schemas
 from database import SessionLocal, engine 
 from typing import List
-from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, InvoiceItemResponse, CustomerUpdate, SupplierUpdate, MedicineOut
+from schemas import SupplierResponse, CustomerResponse, InvoiceResponse, InvoiceItemResponse, CustomerUpdate, SupplierUpdate, MedicineOut, ActivityLogSchema
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from dotenv import load_dotenv
 import os
-from models import Customer, Supplier, Invoice, InvoiceItem, Medicine, Purchase
+from models import Customer, Supplier, Invoice, InvoiceItem, Medicine, Purchase, ActivityLog
 from sqlalchemy import func, extract
 from datetime import datetime, date, timedelta
-
+from pytz import timezone
 
 load_dotenv()
 
@@ -59,7 +59,11 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 
 
 @app.post("/supplier/create")
-def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+def create_supplier(
+    supplier: schemas.SupplierCreate,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user)
+):
     db_supplier = models.Supplier(
         name=supplier.name,
         phone=supplier.phone,
@@ -70,12 +74,20 @@ def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_
         db.add(db_supplier)
         db.commit()
         db.refresh(db_supplier)
+
+        # Log the addition
+        log_activity(
+            db=db,
+            type="addition",
+            message=f"Supplier added: {db_supplier.name} (SUID: {db_supplier.SUID})"
+        )
+
         return {"message": "Supplier added successfully", "SUID": db_supplier.SUID}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
-  
-    
+
+
 @app.post("/customer/create")
 def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     db_customer = models.Customer(
@@ -88,10 +100,19 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
         db.add(db_customer)
         db.commit()
         db.refresh(db_customer)
+
+        # ✅ Log the addition
+        log_activity(
+            db=db,
+            type="addition",
+            message=f"Customer added: {db_customer.name} (SUID: {db_customer.SUID})"
+        )
+
         return {"message": "Customer added successfully", "CUID": db_customer.CUID}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
     
 @app.get("/suppliers", response_model=List[SupplierResponse])
 def get_suppliers(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
@@ -107,10 +128,18 @@ def update_supplier(suid: int, updated: SupplierUpdate, db: Session = Depends(ge
     supplier.address = updated.address
     supplier.phone = updated.phone
     supplier.email = updated.email
+
     db.commit()
     db.refresh(supplier)
 
-    return supplier  # 👈 return the updated supplier object, not just a message
+    # Log the update
+    log_activity(
+        db=db,
+        type="edit",
+        message=f"Supplier updated: {supplier.name} (SUID: {supplier.SUID})"
+    )
+
+    return supplier
 
 
 @app.get("/customers", response_model=List[CustomerResponse])
@@ -118,7 +147,7 @@ def get_customers(db: Session = Depends(get_db), user: str = Depends(get_current
     return db.query(Customer).all()
 
 @app.put("/customer/{cuid}/update")
-def update_customer(cuid: str, updated_data: CustomerUpdate, db: Session = Depends(get_db)):
+def update_customer(cuid: str, updated_data: CustomerUpdate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     customer = db.query(Customer).filter(Customer.CUID == cuid).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -128,7 +157,16 @@ def update_customer(cuid: str, updated_data: CustomerUpdate, db: Session = Depen
     
     db.commit()
     db.refresh(customer)
+
+    # Add log entry
+    log_activity(
+        db=db,
+        type="edit",
+        message=f"Customer updated: {customer.name} (CUID: {customer.CUID})"
+    )
+
     return customer
+
 
 
 @app.get("/dashboard")
@@ -166,7 +204,7 @@ def create_medicines(
             db.flush()
 
             db_purchase = models.Purchase(
-                P_ID=new_p_id,  
+                P_ID=new_p_id,
                 medicine_id=db_medicine.id,
                 medicine_name=med.name,
                 suid=med.SUID,
@@ -179,6 +217,14 @@ def create_medicines(
             db.add(db_purchase)
 
         db.commit()
+
+        # ✅ Log activity
+        log_activity(
+            db=db,
+            type="addition",
+            message=f"{len(medicines)} medicines and purchases added (P_ID: {new_p_id})"
+        )
+
         return {"message": f"{len(medicines)} medicines and purchases added successfully under P_ID {new_p_id}."}
 
     except Exception as e:
@@ -199,9 +245,15 @@ def archive_medicine(
     medicine.is_active = False
     db.commit()
     db.refresh(medicine)
-    
-    return MedicineOut.from_orm_with_archived(medicine)
 
+    # Log the archiving action
+    log_activity(
+        db=db,
+        type="archiving",
+        message=f"Medicine archived: {medicine.name} (ID: {medicine.id})"
+    )
+
+    return MedicineOut.from_orm_with_archived(medicine)
 
 
 @app.get("/medicines")
@@ -248,7 +300,11 @@ def get_medicines(
 
 
 @app.post("/invoice/create")
-def create_invoice(invoice_data: schemas.InvoiceCreate, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+def create_invoice(
+    invoice_data: schemas.InvoiceCreate,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user)
+):
     # Step 1: Validate customer
     customer = db.query(models.Customer).filter(models.Customer.CUID == invoice_data.CUID).first()
     if not customer:
@@ -284,13 +340,23 @@ def create_invoice(invoice_data: schemas.InvoiceCreate, db: Session = Depends(ge
 
         # Update medicine stock
         medicine = db.query(models.Medicine).filter(models.Medicine.id == item.medicineId).first()
-        medicine.quantity -= item.quantity  # Decrease the quantity in stock
+        medicine.quantity -= item.quantity
         if medicine.quantity <= 0:
             medicine.quantity = 0
             medicine.is_active = False
 
     db.commit()
+
+    # ✅ Log the activity
+    log_activity(
+        db=db,
+        type="invoice",
+        message=f"Invoice created (ID: {invoice.id}) for customer: {customer.name}, Total: ₹{invoice.total_amount}"
+    )
+
     return {"message": "Invoice created successfully", "invoice_id": invoice.id}
+
+
 
 @app.get("/invoices", response_model=List[InvoiceResponse])
 def get_invoices(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
@@ -523,3 +589,15 @@ def get_purchase_summary(db: Session = Depends(get_db)):
         "total": total,
         "current_month": current_month_total,
     }
+
+def log_activity(db: Session, type: str, message: str):
+    ist = timezone("Asia/Kolkata")
+    log = ActivityLog(type=type, message=message, timestamp=datetime.now(ist))
+    db.add(log)
+    db.commit()
+
+
+
+@app.get("/api/logs", response_model=list[ActivityLogSchema])
+def get_logs(db: Session = Depends(get_db)):
+    return db.query(ActivityLog).order_by(ActivityLog.timestamp.desc()).all()

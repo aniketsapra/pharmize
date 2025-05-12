@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, DECIMAL, Text, Date, ForeignKey, Float, Boolean
+from sqlalchemy import Column, Integer, String, DECIMAL, Text, Date, ForeignKey, Float, Boolean,DateTime
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -93,3 +94,11 @@ class InvoiceItem(Base):
 
     invoice = relationship("Invoice", back_populates="items")
     medicine = relationship("Medicine")
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    type = Column(String(50), nullable=False)  # e.g., "addition", "archiving", "edit"
+    message = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)

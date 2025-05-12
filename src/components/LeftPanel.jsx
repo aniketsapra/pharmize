@@ -29,6 +29,12 @@ function LeftPanel() {
         </Link>
       </h3>
 
+      <h3 className="my-2 text-left">
+        <Link to="/activity" className={hoverText}>
+          Activity Logs
+        </Link>
+      </h3>
+
       <div className="w-full text-left space-y-2">
         <Accordion type="single" collapsible>
           <AccordionItem value="medicine">
