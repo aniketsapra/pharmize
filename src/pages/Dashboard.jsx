@@ -30,6 +30,38 @@ const Dashboard = () => {
     total: 0,
     current_month: 0,
   });
+  const [activityLogs, setActivityLogs] = useState([]);
+
+  const getIcon = (type) => {
+  switch (type) {
+    case "archiving":
+      return "archive";
+    case "addition":
+      return "add";
+    case "edit":
+      return "edit";
+    case "invoice":
+      return "receipt";
+    default:
+      return "info";
+  }
+};
+
+const getBgColor = (type) => {
+  switch (type) {
+    case "archiving":
+      return "bg-red-100";
+    case "addition":
+      return "bg-green-100";
+    case "edit":
+      return "bg-white";
+    case "invoice":
+      return "bg-blue-100";
+    default:
+      return "bg-gray-100";
+  }
+};
+
 
 useEffect(() => {
   const token = localStorage.getItem("token");
@@ -109,6 +141,17 @@ useEffect(() => {
       }
     })
     .catch(console.error);
+
+  
+   fetch("http://localhost:8000/dashboard/recent-logs", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(res => res.json())
+    .then(data => {
+      setActivityLogs(data.slice(-4)); // fallback if backend doesn't support limit param
+    })
+    .catch(console.error);
+
 }, []);
 
 
@@ -196,6 +239,35 @@ useEffect(() => {
     </div>
   </div>
 </div>
+
+{/* Activity Log Card */}
+{activityLogs.length > 0 && (
+    <Link to="/activity" className="block">
+      <div className="w-full bg-gray-50 p-2 rounded-lg shadow hover:bg-gray-100 transition-colors duration-200">
+        <h2 className="text-md font-semibold mb-2">Recent Activity</h2>
+        <ul className="text-sm divide-y">
+          {activityLogs.map((log, index) => (
+            <li
+              key={index}
+              className={`${getBgColor(log.type)} mb-1`}
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs">{getIcon(log.type)}</span>
+                  <span>{log.message}</span>
+                </div>
+                <span className="text-xs text-gray-500">
+                  {new Date(log.timestamp).toLocaleString()}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Link>
+)}
+
+
         </div>
 
         {/* Right Sidebar */}
@@ -217,6 +289,7 @@ useEffect(() => {
           </div>
 
           {/* Low Stock Section */}
+<Link to='/medicine/inventory'>
 {lowQuantityMedicines.length > 0 && (
   <>
     <hr className="my-4" />
@@ -255,6 +328,7 @@ useEffect(() => {
     </div>
   </>
 )}
+</Link>
 
         </div>
       </div>

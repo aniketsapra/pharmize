@@ -250,7 +250,7 @@ def archive_medicine(
     log_activity(
         db=db,
         type="archiving",
-        message=f"Medicine archived: {medicine.name} (ID: {medicine.id})"
+        message=f"Medicine Deleted: {medicine.name} (ID: {medicine.id})"
     )
 
     return MedicineOut.from_orm_with_archived(medicine)
@@ -589,6 +589,11 @@ def get_purchase_summary(db: Session = Depends(get_db)):
         "total": total,
         "current_month": current_month_total,
     }
+
+@app.get("/dashboard/recent-logs", response_model=list[ActivityLogSchema])
+def get_recent_logs(db: Session = Depends(get_db)):
+    return db.query(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(4).all()
+
 
 def log_activity(db: Session, type: str, message: str):
     ist = timezone("Asia/Kolkata")
