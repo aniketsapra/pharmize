@@ -242,6 +242,7 @@ def archive_medicine(
     if not medicine:
         raise HTTPException(status_code=404, detail="Medicine not found")
 
+    # Archive the medicine
     medicine.is_active = False
     db.commit()
     db.refresh(medicine)
@@ -250,9 +251,10 @@ def archive_medicine(
     log_activity(
         db=db,
         type="archiving",
-        message=f"Medicine Deleted: {medicine.name} (ID: {medicine.id})"
+        message=f"Medicine Archived: {medicine.name} (ID: {medicine.id})"
     )
 
+    # Return the updated medicine with the archived field
     return MedicineOut.from_orm_with_archived(medicine)
 
 

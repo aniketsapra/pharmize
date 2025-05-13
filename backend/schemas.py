@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import date
 from typing import Optional, List
 from models import Medicine  # or wherever your Medicine model is defined
@@ -79,19 +79,23 @@ class MedicineOut(BaseModel):
     description: str | None = None
     SUID: int
     supplier_name: str | None = None
-    archived: bool  # Derived field
+    archived: bool | None = None  # Optional
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
     @staticmethod
     def from_orm_with_archived(medicine: Medicine):
-        return MedicineOut(
-            **medicine.__dict__,
-            supplier_name=medicine.supplier.name if medicine.supplier else None,
-            archived=not medicine.is_active
-        )
+        # Validate and build the model
+        base = MedicineOut.model_validate(medicine)
+        
+        # Add derived fields like supplier_name and archived
+        base.supplier_name = medicine.supplier.name if medicine.supplier else None
+        base.archived = not medicine.is_active
+        
+        return base
 
+
+    model_config = ConfigDict(from_attributes=True)
 
 class InvoiceItemCreate(BaseModel):
     medicineId: int

@@ -47,33 +47,34 @@ function Customers() {
   }
 
   const handleSave = async (cuid) => {
-    try {
-      const response = await fetch(`http://localhost:8000/customer/${cuid}/update`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(editData),
-      })
+  try {
+    const response = await fetch(`http://localhost:8000/customer/${cuid}/update`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify(editData),
+    });
 
-      if (!response.ok) {
-        throw new Error("Failed to update customer.")
-      }
-
-      const updatedCustomer = await response.json()
-
-      setCustomers((prev) =>
-        prev.map((cust) => (cust.CUID === cuid ? updatedCustomer : cust))
-      )
-
-      setEditRow(null)
-      setEditData({})
-    } catch (error) {
-      console.error("Error updating customer:", error)
-      alert("Update failed.")
+    if (!response.ok) {
+      throw new Error("Failed to update customer.");
     }
+
+    // Don't rely on response JSON — update manually
+    setCustomers((prev) =>
+      prev.map((cust) =>
+        cust.CUID === cuid ? { ...cust, ...editData } : cust
+      )
+    );
+
+    setEditRow(null);
+    setEditData({});
+  } catch (error) {
+    console.error("Error updating customer:", error);
+    alert("Update failed.");
   }
+};
 
   const handleCancel = () => {
     setEditRow(null)

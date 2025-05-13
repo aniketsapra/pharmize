@@ -45,29 +45,37 @@ function Medicines() {
     setExpandedRow((prev) => (prev === id ? null : id));
   };
 
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this medicine?");
-    if (!confirmDelete) return;
+const handleDelete = async (id) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this medicine?");
+  if (!confirmDelete) return;
 
-    try {
-      const response = await fetch(`http://localhost:8000/medicine/${id}/archive`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+  try {
+    const response = await fetch(`http://localhost:8000/medicine/${id}/archive`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
 
-      if (response.ok) {
-        await fetchMedicines(); // ← REFETCH here
-      } else {
+    if (response.ok) {
+      await fetchMedicines(); // ✅ Re-fetch data after deletion
+    } else {
+      // 🧠 Try parsing the error only if it's safe
+      let errorMessage = "Failed to delete medicine.";
+      try {
         const errorData = await response.json();
-        alert("Failed to delete medicine: " + errorData.detail);
+        errorMessage += " " + (errorData.detail || JSON.stringify(errorData));
+      } catch {
+        // If response is not JSON (e.g., 204 or plain text), ignore
       }
-    } catch (error) {
-      console.error("Error deleting medicine:", error);
-      alert("Something went wrong while deleting the medicine.");
+      alert(errorMessage);
     }
-  };
+  } catch (error) {
+    console.error("Error deleting medicine:", error);
+    alert("Something went wrong while deleting the medicine.");
+  }
+};
+
 
   const filteredMedicines = medicines.filter((medicine) =>
     medicine.name.toLowerCase().includes(nameFilter.toLowerCase()) &&
@@ -272,7 +280,7 @@ function Medicines() {
               onClick={() => setIsArchiveTableVisible(!isArchiveTableVisible)}
               className="text-blue-600 hover:underline"
             >
-              {isArchiveTableVisible ? "Hide Archived Medicines" : "Show Archived Medicines"}
+              {isArchiveTableVisible ? "Hide Deleted Medicines" : "Show Deleted Medicines"}
             </button>
           </h2>
 

@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from 'react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import React, { useEffect, useState } from "react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 function Suppliers() {
   const [suppliers, setSuppliers] = useState([])
@@ -11,21 +18,21 @@ function Suppliers() {
   const [phoneFilter, setPhoneFilter] = useState("")
   const [emailFilter, setEmailFilter] = useState("")
 
-  useEffect(() => {
-    const fetchSuppliers = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/suppliers", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        })
-        const data = await response.json()
-        setSuppliers(data)
-      } catch (error) {
-        console.error("Error fetching suppliers:", error)
-      }
+  const fetchSuppliers = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/suppliers", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      const data = await response.json()
+      setSuppliers(data)
+    } catch (error) {
+      console.error("Error fetching suppliers:", error)
     }
+  }
 
+  useEffect(() => {
     fetchSuppliers()
   }, [])
 
@@ -37,11 +44,16 @@ function Suppliers() {
       supplier.phone?.toLowerCase().includes(phoneFilter.toLowerCase()) &&
       supplier.email?.toLowerCase().includes(emailFilter.toLowerCase())
   )
-  
 
   const handleEdit = (suid, supplier) => {
     setEditRow(suid)
-    setEditData({ ...supplier })
+    // Ensure all keys exist to prevent "Bad Request"
+    setEditData({
+      name: supplier.name || "",
+      address: supplier.address || "",
+      phone: supplier.phone || "",
+      email: supplier.email || "",
+    })
   }
 
   const handleEditChange = (e) => {
@@ -51,42 +63,33 @@ function Suppliers() {
 
   const handleSave = async (suid) => {
     try {
-      const response = await fetch(`http://localhost:8000/supplier/update/${suid}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(editData),
-      })
-  
+      const response = await fetch(
+        `http://localhost:8000/supplier/update/${suid}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(editData),
+        }
+      )
+
       if (!response.ok) {
         const errText = await response.text()
         console.error("Update failed:", errText)
         alert("Update failed.")
         return
       }
-  
-      const updatedSupplier = await response.json()
-  
-      // Sanity check before updating state
-      if (!updatedSupplier || !updatedSupplier.name) {
-        console.error("Invalid supplier data received:", updatedSupplier)
-        alert("Server returned bad data.")
-        return
-      }
-  
-      setSuppliers((prev) =>
-        prev.map((sup) => (sup.SUID === suid ? updatedSupplier : sup))
-      )
-  
+
       setEditRow(null)
       setEditData({})
+      fetchSuppliers() // reloads updated data
     } catch (error) {
       console.error("Error updating supplier:", error)
       alert("Update failed.")
     }
-  }  
+  }
 
   const handleCancel = () => {
     setEditRow(null)
@@ -96,7 +99,9 @@ function Suppliers() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold">Suppliers</h1>
-      <p className="text-gray-600 mt-1 mb-4">List of all registered suppliers in the system.</p>
+      <p className="text-gray-600 mt-1 mb-4">
+        List of all registered suppliers in the system.
+      </p>
       <hr className="mb-6 border-gray-300" />
 
       <div className="flex gap-4">
@@ -177,7 +182,10 @@ function Suppliers() {
                         >
                           Save
                         </button>
-                        <button onClick={handleCancel} className="text-red-600">
+                        <button
+                          onClick={handleCancel}
+                          className="text-red-600"
+                        >
                           Cancel
                         </button>
                       </>
@@ -199,7 +207,9 @@ function Suppliers() {
         <div className="w-[20%] border-l pl-4 space-y-4">
           <h2 className="text-lg font-semibold">Filter Suppliers</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Name
+            </label>
             <input
               type="text"
               value={nameFilter}
@@ -209,7 +219,9 @@ function Suppliers() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Address</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Address
+            </label>
             <input
               type="text"
               value={addressFilter}
@@ -219,7 +231,9 @@ function Suppliers() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Phone</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Phone
+            </label>
             <input
               type="text"
               value={phoneFilter}
@@ -229,7 +243,9 @@ function Suppliers() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Email
+            </label>
             <input
               type="text"
               value={emailFilter}
