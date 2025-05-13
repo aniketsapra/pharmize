@@ -111,7 +111,7 @@ useEffect(() => {
     .catch(console.error);  
 
   // Fetching low quantity medicines, excluding inactive ones
-  fetch("http://localhost:8000/medicines/low-quantity", {
+  fetch("http://localhost:8000/dashboard/medicines/low-quantity", {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
@@ -127,7 +127,7 @@ useEffect(() => {
     .catch(console.error);
 
   // Fetching near expiry medicines, excluding inactive ones
-  fetch("http://localhost:8000/medicines/near-expiry", {
+  fetch("http://localhost:8000/dashboard/medicines/near-expiry", {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
