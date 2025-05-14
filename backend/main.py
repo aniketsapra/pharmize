@@ -8,7 +8,7 @@ from auth import hash_password, verify_password, create_access_token, get_curren
 from dotenv import load_dotenv
 import os
 from models import ActivityLog
-from routers import customer, supplier, invoice, medicine, dashboard, report
+from routers import customer, supplier, invoice, medicine, dashboard, report, protected
 
 load_dotenv()
 
@@ -32,6 +32,7 @@ app.include_router(customer.router)
 app.include_router(medicine.router)
 app.include_router(invoice.router)
 app.include_router(report.router)
+app.include_router(protected.router)
 
 @app.post("/create_user")
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):

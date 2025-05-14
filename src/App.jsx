@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import { jwtDecode } from 'jwt-decode';  // Correct import for jwt-decode
 import Dashboard from './pages/Dashboard';
 import LeftPanel from './components/LeftPanel';
 import Medicines from './pages/Medicines';
@@ -14,6 +15,7 @@ import SalesReport from './pages/SalesReport';
 import PurchaseReport from './pages/PurchaseReport';
 import LoginPage from './pages/LoginPage';
 import ActivityLogs from './pages/ActivityLogs';
+import { useEffect, useState } from 'react';
 
 // Layout for all protected pages
 const Layout = ({ children }) => (
@@ -23,10 +25,40 @@ const Layout = ({ children }) => (
   </div>
 );
 
-// Protected route wrapper
+// ProtectedRoute to handle authentication
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem("token");
-  return isAuthenticated ? children : <Navigate to="/" replace />;
+  const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    if (token) {
+      // Check if token is expired
+      try {
+        const decodedToken = jwtDecode(token); // Decode token using jwt-decode
+        const currentTime = Date.now() / 1000;
+
+        if (decodedToken.exp < currentTime) {
+          // Token expired, redirect to login
+          localStorage.removeItem("token");
+          setLoading(false);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Token decoding error", error);
+        localStorage.removeItem("token");
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+  }, [token]);
+
+  if (loading) {
+    return <div>Loading...</div>; // Show loading while checking auth
+  }
+
+  return token ? children : <Navigate to="/" />;
 };
 
 function App() {
@@ -159,7 +191,7 @@ function App() {
           }
         />
 
-        {/* Catch-all */}
+        {/* Catch-all route to redirect to login */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

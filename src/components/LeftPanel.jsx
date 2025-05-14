@@ -6,13 +6,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Link } from 'react-router-dom';
+import pharmizeLogo from '@/assets/pharmize.png';
 
 function LeftPanel() {
   return (
     <div className="fixed top-0 left-0 h-full w-1/5 bg-white text-black shadow-lg flex flex-col py-8 px-5 space-y-4">
       
       <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 overflow-hidden">
-        <img src='src/assets/pharmize.png' alt="Pharmize" className="w-full h-full object-cover" />
+        <img src={pharmizeLogo} alt="Pharmize" className="w-full h-full object-cover" />
       </div>
 
       <div className="text-center">
