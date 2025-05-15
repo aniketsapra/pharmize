@@ -26,7 +26,7 @@ const PurchaseReport = () => {
   };
 
   const fetchSuppliers = async () => {
-    const res = await fetch("http://localhost:8000/suppliers", {
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/suppliers`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -40,7 +40,7 @@ const PurchaseReport = () => {
       ...(suid && { suid }),
     });
 
-    const res = await fetch(`http://localhost:8000/purchase-report?${params}`, {
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/purchase-report?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

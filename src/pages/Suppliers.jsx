@@ -20,7 +20,7 @@ function Suppliers() {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await fetch("http://localhost:8000/suppliers", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/suppliers`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -64,7 +64,7 @@ function Suppliers() {
   const handleSave = async (suid) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/supplier/update/${suid}`,
+        `${import.meta.env.VITE_BACKEND_URL}/supplier/update/${suid}`,
         {
           method: "PUT",
           headers: {

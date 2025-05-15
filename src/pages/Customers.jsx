@@ -14,7 +14,7 @@ function Customers() {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await fetch("http://localhost:8000/customers", {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/customers`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -48,7 +48,7 @@ function Customers() {
 
   const handleSave = async (cuid) => {
   try {
-    const response = await fetch(`http://localhost:8000/customer/${cuid}/update`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/customer/${cuid}/update`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

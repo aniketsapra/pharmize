@@ -28,7 +28,7 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
         log_activity(
             db=db,
             type="addition",
-            message=f"Customer added: {db_customer.name} (SUID: {db_customer.SUID})"
+            message=f"Customer added: {db_customer.name} (CUID: {db_customer.CUID})"
         )
 
         return {"message": "Customer added successfully", "CUID": db_customer.CUID}

@@ -21,7 +21,7 @@ function MedicineCreate() {
     const fetchSuppliers = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:8000/suppliers', {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/suppliers`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -87,7 +87,7 @@ function MedicineCreate() {
     try {
       const token = localStorage.getItem('token');
 
-      const response = await fetch('http://localhost:8000/medicine/create', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/medicine/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

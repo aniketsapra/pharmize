@@ -36,7 +36,7 @@ const SalesReport = () => {
     });
 
     try {
-      const res = await fetch(`http://localhost:8000/sales-report?${params.toString()}`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/sales-report?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -54,7 +54,7 @@ const SalesReport = () => {
 
   const fetchCustomers = async () => {
     try {
-      const res = await fetch("http://localhost:8000/customers", {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/customers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

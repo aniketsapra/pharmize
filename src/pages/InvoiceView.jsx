@@ -20,7 +20,7 @@ function InvoiceView() {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const response = await fetch("http://localhost:8000/invoices", {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/invoices`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },

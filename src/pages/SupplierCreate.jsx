@@ -43,7 +43,7 @@ function SupplierCreate() {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/supplier/create", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/supplier/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -17,7 +17,7 @@ const InvoiceCreate = () => {
 
     const fetchCustomers = async () => {
       try {
-        const response = await fetch("http://localhost:8000/customers", {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/customers`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -29,7 +29,7 @@ const InvoiceCreate = () => {
 
     const fetchMedicines = async () => {
       try {
-        const response = await fetch("http://localhost:8000/medicines", {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/medicines`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -100,7 +100,7 @@ const InvoiceCreate = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:8000/invoice/create", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/invoice/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

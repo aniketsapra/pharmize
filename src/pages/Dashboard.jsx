@@ -66,7 +66,7 @@ const getBgColor = (type) => {
 useEffect(() => {
   const token = localStorage.getItem("token");
 
- fetch("http://localhost:8000/dashboard/totals", {
+ fetch(`${import.meta.env.VITE_BACKEND_URL}/dashboard/totals`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
@@ -85,7 +85,7 @@ useEffect(() => {
     .catch(console.error);
 
   // Fetching monthly sales data
-  fetch("http://localhost:8000/dashboard/monthly-sales", {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/dashboard/monthly-sales`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
@@ -103,7 +103,7 @@ useEffect(() => {
     .catch(console.error);
 
   // Fetching purchase summary data
-  fetch("http://localhost:8000/dashboard/purchase-summary", {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/dashboard/purchase-summary`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
@@ -111,7 +111,7 @@ useEffect(() => {
     .catch(console.error);  
 
   // Fetching low quantity medicines, excluding inactive ones
-  fetch("http://localhost:8000/dashboard/medicines/low-quantity", {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/dashboard/medicines/low-quantity`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
@@ -127,7 +127,7 @@ useEffect(() => {
     .catch(console.error);
 
   // Fetching near expiry medicines, excluding inactive ones
-  fetch("http://localhost:8000/dashboard/medicines/near-expiry", {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/dashboard/medicines/near-expiry`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())
@@ -143,7 +143,7 @@ useEffect(() => {
     .catch(console.error);
 
   
-   fetch("http://localhost:8000/dashboard/recent-logs", {
+   fetch(`${import.meta.env.VITE_BACKEND_URL}/dashboard/recent-logs`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(res => res.json())

@@ -18,11 +18,11 @@ function Medicines() {
   const [supplierFilter, setSupplierFilter] = useState("");
   const [suidFilter, setSuidFilter] = useState("");
   const [expandedRow, setExpandedRow] = useState(null);
-  const [isArchiveTableVisible, setIsArchiveTableVisible] = useState(false); // State for collapse/expand
+  const [isArchiveTableVisible, setIsArchiveTableVisible] = useState(false); 
   
   const fetchMedicines = async () => {
     try {
-      const response = await fetch("http://localhost:8000/medicines?include_inactive=true", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/medicines?include_inactive=true`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -50,7 +50,7 @@ const handleDelete = async (id) => {
   if (!confirmDelete) return;
 
   try {
-    const response = await fetch(`http://localhost:8000/medicine/${id}/archive`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/medicine/${id}/archive`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,

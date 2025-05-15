@@ -43,14 +43,16 @@ function CustomerCreate() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/customer/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(customer),
-      });
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/customer/create`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  },
+  body: JSON.stringify(customer),
+});
+
+
 
       if (!response.ok) {
         const error = await response.json();
